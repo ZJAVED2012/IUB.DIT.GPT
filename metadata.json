@@ -1,9 +1,9 @@
 {
-  "name": "IUB.DIT.GPT",
-  "description": "Enterprise-grade Intelligent Assistant for the Directorate of IT, Islamia University of Bahawalpur. Specializing in network infrastructure, device intelligence, and configuration management.",
   "requestFramePermissions": [
     "camera",
     "microphone",
     "geolocation"
-  ]
+  ],
+  "name": "",
+  "description": ""
 }

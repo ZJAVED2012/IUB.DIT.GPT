@@ -5,7 +5,17 @@ export enum AppView {
   CONFIG_LIBRARY = 'CONFIG_LIBRARY',
   SECURITY = 'SECURITY',
   PRICING = 'PRICING',
-  MEDIA_LAB = 'MEDIA_LAB'
+  MEDIA_LAB = 'MEDIA_LAB',
+  LIVE = 'LIVE',
+  SYSTEM_EVENTS = 'SYSTEM_EVENTS'
+}
+
+export enum Persona {
+  ARCHITECT = 'System Architect',
+  HARDWARE = 'Hardware Oracle',
+  SECURITY = 'Security Sentinel',
+  SUPPORT = 'Ops Support',
+  NETWORK = 'Nexus Analyst'
 }
 
 export interface Message {
@@ -18,6 +28,7 @@ export interface Message {
   video?: string;
   audio?: string;
   isThinking?: boolean;
+  persona?: Persona;
 }
 
 export interface Device {
@@ -34,7 +45,13 @@ export interface Device {
   softwareVersion?: string;
   powerRequirement?: string;
   ports?: string[];
-  licensing?: string;
+}
+
+export interface SystemEvent {
+  id: string;
+  timestamp: Date;
+  message: string;
+  type: 'info' | 'warning' | 'error' | 'success';
 }
 
 export interface ConfigTemplate {
