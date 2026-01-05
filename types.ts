@@ -2,6 +2,7 @@
 export enum AppView {
   CHAT = 'CHAT',
   INVENTORY = 'INVENTORY',
+  DEVICE_MANAGEMENT = 'DEVICE_MANAGEMENT',
   CONFIG_LIBRARY = 'CONFIG_LIBRARY',
   SECURITY = 'SECURITY',
   PRICING = 'PRICING',
@@ -32,20 +33,36 @@ export interface Message {
   persona?: Persona;
 }
 
+export type DeviceType = 
+  | 'Core Switch' 
+  | 'Switch' 
+  | 'Router' 
+  | 'Firewall' 
+  | 'Server' 
+  | 'AP' 
+  | 'IP Phone' 
+  | 'PC' 
+  | 'Laptop' 
+  | 'Printer' 
+  | 'Storage';
+
 export interface Device {
   id: string;
   name: string;
   brand: string;
   model: string;
-  type: 'Router' | 'Switch' | 'Firewall' | 'Server' | 'AP' | 'Storage';
+  type: DeviceType;
   status: 'Online' | 'Offline' | 'Maintenance';
   ip: string;
+  ipHistory: string[];
+  macAddress: string;
   location: string;
   lastConfig: string;
   specs: string;
   softwareVersion?: string;
   powerRequirement?: string;
   ports?: string[];
+  image?: string; // New: Device visual asset
 }
 
 export interface SystemEvent {

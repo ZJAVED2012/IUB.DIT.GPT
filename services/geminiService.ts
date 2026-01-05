@@ -55,29 +55,73 @@ export class GeminiService {
   constructor() {}
 
   private getAI() {
-    // Standardizing initialization as per guidelines
     return new GoogleGenAI({ apiKey: process.env.API_KEY });
   }
 
+  /**
+   * Robust retry logic with aggressive exponential backoff for 429 errors.
+   */
+  private async withRetry<T>(fn: () => Promise<T>, maxRetries = 4): Promise<T> {
+    let lastError: any;
+    for (let i = 0; i <= maxRetries; i++) {
+      try {
+        return await fn();
+      } catch (err: any) {
+        lastError = err;
+        const errMsg = err?.message || "";
+        const isQuotaError = 
+          err?.status === 429 || 
+          errMsg.includes("429") || 
+          errMsg.toLowerCase().includes("quota") ||
+          errMsg.toLowerCase().includes("exhausted") ||
+          errMsg.toLowerCase().includes("rate limit");
+        
+        if (!isQuotaError || i === maxRetries) break;
+        
+        // Exponential backoff: 5s, 10s, 20s, 40s + jitter
+        // Free tier often requires substantial wait times
+        const delay = Math.pow(2, i) * 5000 + Math.random() * 2000;
+        console.warn(`[GeminiService] Quota exceeded. Retrying in ${Math.round(delay/1000)}s... (Attempt ${i + 1}/${maxRetries})`);
+        await new Promise(res => setTimeout(res, delay));
+      }
+    }
+    return await this.handleApiError(lastError);
+  }
+
   private async handleApiError(err: any): Promise<never> {
-    if (err?.message?.includes("Requested entity was not found.") && (window as any).aistudio) {
+    console.error("Gemini API Error Detail:", err);
+    const errMsg = err?.message || "";
+    
+    // Check if key selection needs reset
+    if (errMsg.includes("Requested entity was not found.") && (window as any).aistudio) {
+      console.warn("API Key invalidated or missing. Resetting key selection.");
       await (window as any).aistudio.openSelectKey();
     }
+    
+    if (errMsg.includes("429") || errMsg.toLowerCase().includes("quota") || errMsg.toLowerCase().includes("exhausted")) {
+      const quotaErr = new Error("RESOURCE_EXHAUSTED");
+      (quotaErr as any).originalError = err;
+      throw quotaErr;
+    }
+
     throw err;
   }
 
   async chat(prompt: string, history: any[] = [], options: ChatOptions = {}): Promise<{ text: string; sources: any[] }> {
-    const ai = this.getAI();
-    try {
-      // Logic for model selection based on features
-      let model = 'gemini-3-pro-preview'; // Default high-quality chatbot
+    return this.withRetry(async () => {
+      const ai = this.getAI();
       
-      if (options.useFast) {
-        model = 'gemini-flash-lite-latest'; // Fast AI responses
-      } else if (options.useSearch) {
-        model = 'gemini-3-flash-preview'; // Google Search Grounding
+      // Select model strictly based on capabilities
+      let model = 'gemini-3-pro-preview'; 
+
+      if (options.useSearch) {
+        model = 'gemini-3-flash-preview';
       } else if (options.useMaps) {
-        model = 'gemini-2.5-flash'; // Google Maps Grounding
+        model = 'gemini-2.5-flash';
+      } else if (options.useFast) {
+        model = 'gemini-flash-lite-latest';
+      } else if (options.useThinking) {
+        model = 'gemini-3-pro-preview';
       }
 
       const tools: any[] = [];
@@ -85,31 +129,29 @@ export class GeminiService {
         systemInstruction: PERSONA_INSTRUCTIONS[options.persona || Persona.ARCHITECT],
       };
 
-      // Handle Thinking Mode
       if (options.useThinking) {
-        model = 'gemini-3-pro-preview';
         config.thinkingConfig = { thinkingBudget: 32768 };
-        // Guidelines: Avoid maxOutputTokens when thinkingBudget is high unless specific
       }
 
-      // Handle Grounding Tools
       if (options.useMaps) {
         tools.push({ googleMaps: {} });
         try {
-          // Maps grounding requires user location
           const pos = await new Promise<GeolocationPosition>((res, rej) => 
-            navigator.geolocation.getCurrentPosition(res, rej)
-          );
-          config.toolConfig = {
-            retrievalConfig: { 
-              latLng: { 
-                latitude: pos.coords.latitude, 
-                longitude: pos.coords.longitude 
-              } 
-            }
-          };
+            navigator.geolocation.getCurrentPosition(res, rej, { timeout: 3000 })
+          ).catch(() => null);
+          
+          if (pos) {
+            config.toolConfig = {
+              retrievalConfig: { 
+                latLng: { 
+                  latitude: pos.coords.latitude, 
+                  longitude: pos.coords.longitude 
+                } 
+              }
+            };
+          }
         } catch (e) {
-          console.warn("Location permission denied or unavailable for Maps grounding.");
+          console.warn("Location context could not be injected for Maps grounding.");
         }
       } else if (options.useSearch) {
         tools.push({ googleSearch: {} });
@@ -120,7 +162,6 @@ export class GeminiService {
       const contents: any[] = [...history];
       const parts: any[] = [{ text: prompt }];
       
-      // Multi-modal analysis
       if (options.image) {
         parts.unshift({ 
           inlineData: { 
@@ -128,47 +169,29 @@ export class GeminiService {
             data: options.image.split(',')[1] || options.image 
           } 
         });
-        // Image understanding defaults to Pro for accuracy
-        if (!options.useFast && !options.useSearch && !options.useMaps) {
-           model = 'gemini-3-pro-preview';
-        }
-      }
-
-      if (options.video) {
-        parts.unshift({ 
-          inlineData: { 
-            mimeType: 'video/mp4', 
-            data: options.video.split(',')[1] || options.video 
-          } 
-        });
-        // Video understanding defaults to Pro
-        if (!options.useFast && !options.useSearch && !options.useMaps) {
-          model = 'gemini-3-pro-preview';
-        }
       }
 
       contents.push({ role: 'user', parts });
 
       const response = await ai.models.generateContent({ model, contents, config });
-      const text = response.text || "Neural link established but no response data received.";
+      const text = response.text || "";
       
-      // Extract grounding sources
-      const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks
-        ?.map((chunk: any) => {
-          if (chunk.web) return { title: chunk.web.title, uri: chunk.web.uri };
-          if (chunk.maps) return { title: chunk.maps.title, uri: chunk.maps.uri };
-          return null;
-        }).filter(Boolean) || [];
+      const sources: any[] = [];
+      const groundingMetadata = response.candidates?.[0]?.groundingMetadata;
+      if (groundingMetadata?.groundingChunks) {
+        groundingMetadata.groundingChunks.forEach((chunk: any) => {
+          if (chunk.web) sources.push({ title: chunk.web.title, uri: chunk.web.uri });
+          if (chunk.maps) sources.push({ title: chunk.maps.title, uri: chunk.maps.uri });
+        });
+      }
 
       return { text, sources };
-    } catch (error) {
-      return await this.handleApiError(error);
-    }
+    });
   }
 
   async transcribe(audioBase64: string): Promise<string> {
-    const ai = this.getAI();
-    try {
+    return this.withRetry(async () => {
+      const ai = this.getAI();
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: {
@@ -179,14 +202,12 @@ export class GeminiService {
         }
       });
       return response.text || "";
-    } catch (error) {
-      return await this.handleApiError(error);
-    }
+    });
   }
 
   async generateImage(prompt: string, options: { aspectRatio: AspectRatio; imageSize: ImageSize }): Promise<string | null> {
-    const ai = this.getAI();
-    try {
+    return this.withRetry(async () => {
+      const ai = this.getAI();
       const response = await ai.models.generateContent({
         model: 'gemini-3-pro-image-preview',
         contents: { parts: [{ text: prompt }] },
@@ -204,14 +225,39 @@ export class GeminiService {
         }
       }
       return null;
-    } catch (error) {
-      return await this.handleApiError(error);
-    }
+    });
+  }
+
+  async editImage(prompt: string, imageBase64: string): Promise<string | null> {
+    return this.withRetry(async () => {
+      const ai = this.getAI();
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image',
+        contents: {
+          parts: [
+            {
+              inlineData: {
+                data: imageBase64.split(',')[1] || imageBase64,
+                mimeType: 'image/jpeg',
+              },
+            },
+            { text: prompt },
+          ],
+        },
+      });
+
+      if (response.candidates?.[0]?.content?.parts) {
+        for (const part of response.candidates[0].content.parts) {
+          if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
+        }
+      }
+      return null;
+    });
   }
 
   async generateSpeech(text: string): Promise<string | null> {
-    const ai = this.getAI();
-    try {
+    return this.withRetry(async () => {
+      const ai = this.getAI();
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-preview-tts",
         contents: [{ parts: [{ text }] }],
@@ -223,15 +269,12 @@ export class GeminiService {
         }
       });
       return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
-    } catch (error) {
-      return await this.handleApiError(error);
-    }
+    });
   }
 
   async generateVideo(prompt: string, aspectRatio: '16:9' | '9:16' = '16:9', startImage?: string, resolution: '720p' | '1080p' = '720p'): Promise<string> {
     const ai = this.getAI();
     try {
-      // Veo API Key Selection Check
       if (window.aistudio && !(await window.aistudio.hasSelectedApiKey())) {
         await window.aistudio.openSelectKey();
       }
