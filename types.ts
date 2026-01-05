@@ -7,7 +7,8 @@ export enum AppView {
   PRICING = 'PRICING',
   MEDIA_LAB = 'MEDIA_LAB',
   LIVE = 'LIVE',
-  SYSTEM_EVENTS = 'SYSTEM_EVENTS'
+  SYSTEM_EVENTS = 'SYSTEM_EVENTS',
+  SETTINGS = 'SETTINGS'
 }
 
 export enum Persona {
@@ -63,3 +64,10 @@ export interface ConfigTemplate {
 
 export type AspectRatio = '1:1' | '2:3' | '3:2' | '3:4' | '4:3' | '9:16' | '16:9' | '21:9';
 export type ImageSize = '1K' | '2K' | '4K';
+
+export interface ThemeConfig {
+  mode: 'dark' | 'light';
+  primaryColor: string;
+  secondaryColor: string;
+  fontFamily: string;
+}
