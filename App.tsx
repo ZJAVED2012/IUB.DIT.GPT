@@ -10,7 +10,8 @@ import {
   UserCircle, Binary, Film, Copyright, RefreshCw, Copy, Check, FileText, Database,
   Play, Palette, SlidersHorizontal, Settings, Sun, Moon, Type as TypeIcon,
   Maximize, Monitor, Square, Smartphone, Layers2, Box, Aperture,
-  Cpu as CpuIcon, Bolt, Radio, MonitorSmartphone, PlusCircle, Trash, Laptop, Printer, PhoneForwarded, Eye, Filter, History, Radar, Eraser
+  Bolt, Radio, MonitorSmartphone, PlusCircle, Trash, Laptop, Printer, PhoneForwarded, Eye, Filter, History, Radar, Eraser, KeyRound, BadgeCheck, ListRestart, FileDown, Box as Cube,
+  Mail, Table, BarChart3, PieChart, LineChart
 } from 'lucide-react';
 import { AppView, Message, Device, AspectRatio, ImageSize, Persona, SystemEvent, ThemeConfig, DeviceType } from './types';
 import { MOCK_DEVICES, CONFIG_LIBRARY } from './constants';
@@ -25,73 +26,189 @@ const IUBDITLogo: React.FC<{ size?: number }> = ({ size = 48 }) => (
   </div>
 );
 
-const CopyButton: React.FC<{ text: string }> = ({ text }) => {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+// --- Excel-like Data Table Component ---
+const ExcelDataTable: React.FC<{ data: { headers: string[], rows: any[][] } }> = ({ data }) => {
+  const [theme] = useState(() => {
+    const saved = localStorage.getItem('iub_dit_theme_v1');
+    return saved ? JSON.parse(saved) : { mode: 'dark' };
+  });
+
+  const copyToClipboard = () => {
+    const csv = [data.headers.join(','), ...data.rows.map(row => row.join(','))].join('\n');
+    navigator.clipboard.writeText(csv);
+    alert("Data copied to clipboard in CSV format.");
   };
+
   return (
-    <button 
-      onClick={handleCopy} 
-      className="p-1.5 hover:bg-white/10 rounded-md transition-all text-slate-400 hover:text-sky-400"
-      title="Copy to clipboard"
-    >
-      {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-    </button>
+    <div className="my-4 overflow-hidden rounded-xl border border-white/10 shadow-2xl bg-black/20 animate-in zoom-in-95 duration-500">
+      <div className="bg-white/5 px-4 py-2 border-b border-white/10 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Table size={14} className="theme-primary-text" />
+          <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Excel Logic Matrix</span>
+        </div>
+        <button onClick={copyToClipboard} className="p-1 hover:theme-primary-text transition-colors">
+          <Copy size={14} />
+        </button>
+      </div>
+      <div className="overflow-x-auto max-w-full custom-scrollbar">
+        <table className="w-full border-collapse text-left text-xs">
+          <thead>
+            <tr className="bg-white/5">
+              {data.headers.map((h, i) => (
+                <th key={i} className="px-4 py-2.5 border-r border-b border-white/10 font-black uppercase tracking-wider text-[9px] text-slate-400 whitespace-nowrap">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.rows.map((row, ri) => (
+              <tr key={ri} className="hover:bg-white/5 transition-colors group">
+                {row.map((cell, ci) => (
+                  <td key={ci} className="px-4 py-2 border-r border-b border-white/5 text-slate-300 font-medium">
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 };
 
-const STYLE_PRESETS = [
-  { id: 'photorealistic', name: 'Photorealistic', description: 'Hyper-realistic, high detail, 8k, cinematic lighting, professional photography.' },
-  { id: 'blueprint', name: 'Blueprint', description: 'Technical architectural drawing, cyanotype style, white ink on blue background, precise lines, CAD documentation.' },
-  { id: 'isometric', name: 'Isometric 3D', description: 'Clean isometric 3D render, vibrant colors, soft ambient occlusion shadows, stylized network equipment.' },
-  { id: 'cyberpunk', name: 'Cyberpunk', description: 'Neon accents, futuristic technology, rainy environment, high contrast, pink and teal lighting.' },
-  { id: 'minimalist', name: 'Minimalist', description: 'Flat vector design, simple geometric shapes, clean aesthetics, pastel corporate palette.' },
-  { id: 'oil-painting', name: 'Oil Painting', description: 'Classic fine art style, visible heavy brushstrokes, rich textures, impasto technique.' },
-  { id: 'sketch', name: 'Pencil Sketch', description: 'Hand-drawn pencil sketch, graphite texture, cross-hatching, artistic shading on paper.' },
-  { id: 'pop-art', name: 'Pop Art', description: 'Andy Warhol style, bold saturated colors, halftone patterns, high contrast, vibrant commercial art.' },
-  { id: 'claymation', name: 'Claymation', description: 'Clay model style, hand-sculpted look, tactile surfaces, stop-motion animation aesthetic.' },
-  { id: 'origami', name: 'Origami', description: 'Paper fold art, high detail sharp creases, clean white and colored paper textures.' },
-  { id: 'retro-futurism', name: 'Retro Futurism', description: '1950s atomic age vision of the future, sleek chrome, rocket ship curves, vintage sci-fi colors.' },
-  { id: 'watercolor', name: 'Watercolor', description: 'Soft delicate watercolor paint, wet-on-wet technique, beautiful pigment bleeds, hand-painted feel.' }
-];
+// --- Neural Graph Component (SVG Based) ---
+const NeuralDataGraph: React.FC<{ data: { type: string, title: string, labels: string[], datasets: any[] } }> = ({ data }) => {
+  const maxVal = Math.max(...data.datasets.flatMap(ds => ds.data), 10);
+  const chartHeight = 160;
+  const chartWidth = 400;
+  const padding = 30;
 
-const ASPECT_RATIO_OPTIONS: { label: string; value: AspectRatio; icon: any }[] = [
-  { label: '1:1 Square', value: '1:1', icon: <Square size={14} /> },
-  { label: '2:3 Classic', value: '2:3', icon: <Smartphone size={14} /> },
-  { label: '3:2 Landscape', value: '3:2', icon: <Monitor size={14} /> },
-  { label: '3:4 Portrait', value: '3:4', icon: <Smartphone size={14} className="scale-y-110" /> },
-  { label: '4:3 Standard', value: '4:3', icon: <Monitor size={14} className="scale-x-90" /> },
-  { label: '9:16 Social', value: '9:16', icon: <Smartphone size={14} className="scale-y-125" /> },
-  { label: '16:9 Widescreen', value: '16:9', icon: <Monitor size={14} className="scale-x-110" /> },
-  { label: '21:9 Ultrawide', value: '21:9', icon: <Monitor size={14} className="scale-x-150" /> },
-];
+  return (
+    <div className="my-4 p-4 rounded-xl border border-white/10 bg-black/20 shadow-2xl animate-in fade-in duration-700">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          {data.type === 'bar' ? <BarChart3 size={16} /> : data.type === 'line' ? <LineChart size={16} /> : <PieChart size={16} />}
+          <h4 className="text-[10px] font-black uppercase tracking-widest theme-primary-text">{data.title}</h4>
+        </div>
+        <span className="text-[8px] font-bold opacity-30 uppercase tracking-[0.2em]">Neural Vis Node</span>
+      </div>
 
-const RESOLUTION_OPTIONS: { label: string; value: ImageSize; desc: string }[] = [
-  { label: '1K', value: '1K', desc: 'Standard Quality' },
-  { label: '2K', value: '2K', desc: 'High Detail' },
-  { label: '4K', value: '4K', desc: 'Ultra High Fidelity' },
-];
+      <div className="relative w-full overflow-hidden" style={{ aspectRatio: '16/7' }}>
+        <svg viewBox={`0 0 ${chartWidth} ${chartHeight + padding}`} className="w-full h-full overflow-visible">
+          {/* Grid Lines */}
+          {[0, 0.25, 0.5, 0.75, 1].map((p, i) => (
+            <line 
+              key={i} 
+              x1={padding} 
+              y1={chartHeight - (p * chartHeight)} 
+              x2={chartWidth - padding} 
+              y2={chartHeight - (p * chartHeight)} 
+              stroke="white" 
+              strokeOpacity="0.05" 
+              strokeDasharray="2,2" 
+            />
+          ))}
+
+          {data.type === 'bar' && data.datasets[0].data.map((val: number, i: number) => {
+            const barWidth = (chartWidth - padding * 2) / data.labels.length - 10;
+            const h = (val / maxVal) * chartHeight;
+            const x = padding + i * ((chartWidth - padding * 2) / data.labels.length) + 5;
+            const y = chartHeight - h;
+            return (
+              <g key={i} className="group cursor-help">
+                <rect 
+                  x={x} 
+                  y={y} 
+                  width={barWidth} 
+                  height={h} 
+                  fill="var(--primary)" 
+                  fillOpacity="0.6" 
+                  className="transition-all hover:fill-opacity-90"
+                />
+                <text x={x + barWidth / 2} y={chartHeight + 15} textAnchor="middle" fontSize="8" fill="white" opacity="0.4" className="font-bold uppercase">{data.labels[i]}</text>
+                <text x={x + barWidth / 2} y={y - 5} textAnchor="middle" fontSize="9" fill="white" className="font-bold opacity-0 group-hover:opacity-100 transition-opacity">{val}</text>
+              </g>
+            );
+          })}
+
+          {data.type === 'line' && (
+            <path 
+              d={`M ${data.datasets[0].data.map((val: number, i: number) => {
+                const x = padding + i * ((chartWidth - padding * 2) / (data.labels.length - 1));
+                const y = chartHeight - (val / maxVal) * chartHeight;
+                return `${x},${y}`;
+              }).join(' L ')}`}
+              fill="none"
+              stroke="var(--primary)"
+              strokeWidth="3"
+              strokeLinecap="round"
+              className="drop-shadow-[0_0_8px_var(--primary)]"
+            />
+          )}
+        </svg>
+      </div>
+      
+      <div className="mt-4 flex flex-wrap gap-4 items-center justify-center border-t border-white/5 pt-3">
+        {data.datasets.map((ds, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full theme-primary-bg"></div>
+            <span className="text-[8px] font-black uppercase text-slate-500">{ds.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// --- Message Content Parser ---
+const ParsedContent: React.FC<{ content: string }> = ({ content }) => {
+  const parts = content.split(/(```json:table\n[\s\S]*?```|```json:graph\n[\s\S]*?```)/g);
+
+  return (
+    <div className="space-y-2">
+      {parts.map((part, i) => {
+        if (part.startsWith('```json:table')) {
+          try {
+            const jsonStr = part.replace('```json:table\n', '').replace('```', '');
+            const data = JSON.parse(jsonStr);
+            return <ExcelDataTable key={i} data={data} />;
+          } catch (e) { return <pre key={i} className="text-[10px] text-red-400">Error parsing table data</pre>; }
+        }
+        if (part.startsWith('```json:graph')) {
+          try {
+            const jsonStr = part.replace('```json:graph\n', '').replace('```', '');
+            const data = JSON.parse(jsonStr);
+            return <NeuralDataGraph key={i} data={data} />;
+          } catch (e) { return <pre key={i} className="text-[10px] text-red-400">Error parsing graph data</pre>; }
+        }
+        return <div key={i} className="whitespace-pre-wrap">{part}</div>;
+      })}
+    </div>
+  );
+};
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeView, setActiveView] = useState<AppView>(AppView.CHAT);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isResetting, setIsResetting] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  // Device State
+  const [lastErrorWasQuota, setLastErrorWasQuota] = useState(false);
+
   const [devices, setDevices] = useState<Device[]>(() => {
     const saved = localStorage.getItem('iub_dit_devices_v1');
     return saved ? JSON.parse(saved) : MOCK_DEVICES;
   });
 
   useEffect(() => {
-    localStorage.setItem('iub_dit_devices_v1', JSON.stringify(devices));
-  }, [devices]);
+    if (!isResetting) {
+      localStorage.setItem('iub_dit_devices_v1', JSON.stringify(devices));
+    }
+  }, [devices, isResetting]);
 
-  // Theme Management
   const [theme, setTheme] = useState<ThemeConfig>(() => {
     const saved = localStorage.getItem('iub_dit_theme_v1');
     return saved ? JSON.parse(saved) : {
@@ -103,7 +220,9 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    localStorage.setItem('iub_dit_theme_v1', JSON.stringify(theme));
+    if (!isResetting) {
+      localStorage.setItem('iub_dit_theme_v1', JSON.stringify(theme));
+    }
     const root = document.documentElement;
     root.style.setProperty('--primary', theme.primaryColor);
     root.style.setProperty('--secondary', theme.secondaryColor);
@@ -122,7 +241,7 @@ const App: React.FC = () => {
       root.style.setProperty('--text-muted', '#94a3b8');
       root.style.setProperty('--border', 'rgba(255, 255, 255, 0.05)');
     }
-  }, [theme]);
+  }, [theme, isResetting]);
   
   const INITIAL_MESSAGE: Message = { 
     id: '1', 
@@ -135,9 +254,6 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('iub_dit_chat_history_v2');
     return saved ? JSON.parse(saved).map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })) : [INITIAL_MESSAGE];
   });
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [systemEvents, setSystemEvents] = useState<SystemEvent[]>([]);
 
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -154,16 +270,17 @@ const App: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    localStorage.setItem('iub_dit_chat_history_v2', JSON.stringify(messages));
-    if (!searchQuery) {
-      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!isResetting) {
+      localStorage.setItem('iub_dit_chat_history_v2', JSON.stringify(messages));
     }
-  }, [messages, searchQuery]);
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isResetting]);
 
   const handleSendMessage = async () => {
     if (!input.trim() && !selectedImage && !selectedVideo) return;
     if (isTyping) return;
 
+    setLastErrorWasQuota(false);
     const userMsg: Message = { 
       id: Date.now().toString(), 
       role: 'user', 
@@ -208,7 +325,8 @@ const App: React.FC = () => {
     } catch (err: any) {
       let errorMessage = "Neural uplink synchronization fault. Please verify parameters and retry.";
       if (err?.message === "RESOURCE_EXHAUSTED") {
-        errorMessage = "SYSTEM OVERLOAD: Gemini API quota exceeded for the current neural cycle. Please wait for at least 60 seconds before retrying, or switch to a paid API key if available.";
+        setLastErrorWasQuota(true);
+        errorMessage = "SYSTEM OVERLOAD: The current project quota has been exhausted. \n\nFIX ACTIONS:\n1. Enable 'Fast Response' (Lite model) for higher rate limits.\n2. Use the 'Switch Project' button above to use a different API key.\n3. Wait 60 seconds for the buffer to recycle.";
       } else {
         errorMessage = `UPLINK FAILURE: ${err?.message || "Internal Synchronization Error"}. Ensure terminal parameters are correct.`;
       }
@@ -221,34 +339,25 @@ const App: React.FC = () => {
     } finally { setIsTyping(false); }
   };
 
-  const handleUpdateDevice = (updatedDevice: Device) => {
-    setDevices(prev => prev.map(d => d.id === updatedDevice.id ? updatedDevice : d));
+  const handleSwitchKey = async () => {
+    await gemini.openKeySelector();
   };
 
-  const handleClearData = () => {
-    const confirmed = window.confirm("CRITICAL SYSTEM RESET: Purge all neural logs, device assets, and session caches? This will restore the system to factory default.");
-    if (confirmed) {
-      // Robust cleanup of all browser storage
-      try {
-        localStorage.clear();
-        sessionStorage.clear();
-        
-        // Clearing indexedDB if any (though not explicitly used, good practice)
-        if (window.indexedDB) {
-          window.indexedDB.databases().then(dbs => {
-            dbs.forEach(db => {
-              if (db.name) window.indexedDB.deleteDatabase(db.name);
-            });
-          });
-        }
-        
-        // Hard reload ensuring no cache is used
+  const handleClearData = async () => {
+    if (window.confirm("CRITICAL SYSTEM RESET: Purge all neural logs and device registrations? This cannot be undone.")) {
+      setIsResetting(true);
+      
+      localStorage.removeItem('iub_dit_devices_v1');
+      localStorage.removeItem('iub_dit_chat_history_v2');
+      localStorage.removeItem('iub_dit_theme_v1');
+      localStorage.clear();
+
+      setMessages([INITIAL_MESSAGE]);
+      setDevices(MOCK_DEVICES);
+      
+      setTimeout(() => {
         window.location.reload();
-      } catch (e) {
-        console.error("Cleanup failed:", e);
-        // Fallback reload
-        window.location.href = window.location.href.split('#')[0];
-      }
+      }, 1500);
     }
   };
 
@@ -261,32 +370,6 @@ const App: React.FC = () => {
     a.download = `IUB_DIT_Logs.txt`;
     a.click();
     URL.revokeObjectURL(url);
-  };
-
-  const generateMockEvents = () => {
-    const messagesPool = ["Neural gateway initialized.", "Authorized access attempt.", "Uplink latency exceeding standard.", "Security patch deployed."];
-    const newEvents = Array.from({ length: 8 }, (_, i) => ({
-      id: `evt-${Date.now()}-${i}`,
-      timestamp: new Date(),
-      message: messagesPool[Math.floor(Math.random() * messagesPool.length)],
-      type: 'info' as const
-    }));
-    setSystemEvents(newEvents);
-  };
-
-  const playTTS = async (text: string) => {
-    try {
-      const base64 = await gemini.generateSpeech(text);
-      if (base64) {
-        if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-        const ctx = audioContextRef.current;
-        const audioBuffer = await decodeAudioData(decodeBase64(base64), ctx, 24000, 1);
-        const source = ctx.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(ctx.destination);
-        source.start();
-      }
-    } catch (e) { console.error(e); }
   };
 
   const transcribeAudio = async () => {
@@ -329,6 +412,20 @@ const App: React.FC = () => {
 
   return (
     <div className={`flex h-screen overflow-hidden ${theme.mode === 'light' ? 'bg-[#f8fafc]' : 'bg-[#020617] text-slate-300'}`} style={{ fontFamily: theme.fontFamily }}>
+      {/* Neural Purge Overlay */}
+      {isResetting && (
+        <div className="fixed inset-0 z-[100] bg-[#020617] flex flex-col items-center justify-center space-y-4 animate-in fade-in duration-500">
+           <Eraser size={64} className="text-red-500 animate-bounce" />
+           <div className="text-center">
+              <h2 className="text-2xl font-black text-white uppercase tracking-tighter">System Purge Active</h2>
+              <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.4em] animate-pulse">Defragmenting Neural Cache & Hardware Registries</p>
+           </div>
+           <div className="w-48 h-1 bg-white/5 rounded-full overflow-hidden">
+              <div className="h-full theme-primary-bg animate-[scan_1.5s_infinite]"></div>
+           </div>
+        </div>
+      )}
+
       <aside className={`${isSidebarOpen ? 'w-60' : 'w-16'} ${theme.mode === 'light' ? 'bg-white border-slate-200' : 'bg-[#070b1d] border-white/5'} border-r flex flex-col transition-all duration-300 z-40 relative shadow-xl`}>
         <div className={`p-4 border-b ${theme.mode === 'light' ? 'border-slate-200' : 'border-white/5'} flex items-center gap-3 overflow-hidden text-nowrap`}>
           <IUBDITLogo size={32} />
@@ -345,10 +442,7 @@ const App: React.FC = () => {
           <SidebarItem icon={<Radio size={16} />} label="Device Manager" active={activeView === AppView.DEVICE_MANAGEMENT} collapsed={!isSidebarOpen} onClick={() => setActiveView(AppView.DEVICE_MANAGEMENT)} />
           <SidebarItem icon={<Video size={16} />} label="Media Lab" active={activeView === AppView.MEDIA_LAB} collapsed={!isSidebarOpen} onClick={() => setActiveView(AppView.MEDIA_LAB)} />
           <SidebarItem icon={<Phone size={16} />} label="Voice Proxy" active={activeView === AppView.LIVE} collapsed={!isSidebarOpen} onClick={() => setActiveView(AppView.LIVE)} />
-          <SidebarItem icon={<Bell size={16} />} label="Alerts" active={activeView === AppView.SYSTEM_EVENTS} collapsed={!isSidebarOpen} onClick={() => setActiveView(AppView.SYSTEM_EVENTS)} />
           <SidebarItem icon={<LayoutDashboard size={16} />} label="Inventory" active={activeView === AppView.INVENTORY} collapsed={!isSidebarOpen} onClick={() => setActiveView(AppView.INVENTORY)} />
-          <SidebarItem icon={<Terminal size={16} />} label="CLI Vault" active={activeView === AppView.CONFIG_LIBRARY} collapsed={!isSidebarOpen} onClick={() => setActiveView(AppView.CONFIG_LIBRARY)} />
-          <SidebarItem icon={<ShieldCheck size={16} />} label="Security" active={activeView === AppView.SECURITY} collapsed={!isSidebarOpen} onClick={() => setActiveView(AppView.SECURITY)} />
           <SidebarItem icon={<Settings size={16} />} label="Theme Engine" active={activeView === AppView.SETTINGS} collapsed={!isSidebarOpen} onClick={() => setActiveView(AppView.SETTINGS)} />
           
           <div className={`pt-4 mt-4 border-t ${theme.mode === 'light' ? 'border-slate-200' : 'border-white/5'} space-y-1`}>
@@ -356,6 +450,28 @@ const App: React.FC = () => {
             <SidebarItem icon={<Trash2 size={16} className="text-red-400" />} label="Clear Cache" active={false} collapsed={!isSidebarOpen} onClick={handleClearData} />
           </div>
         </nav>
+
+        <div className={`p-4 border-t ${theme.mode === 'light' ? 'border-slate-200 bg-slate-50/50' : 'border-white/5 bg-white/[0.02]'} transition-all duration-300`}>
+          {isSidebarOpen ? (
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-1.5">
+                <span className={`text-[10px] font-black tracking-tight ${theme.mode === 'light' ? 'text-slate-900' : 'text-slate-100'}`}>Mr. Zeeshan Javed</span>
+                <BadgeCheck size={12} className="text-sky-500 fill-sky-500/20" />
+              </div>
+              <p className="text-[8px] font-bold text-slate-500 uppercase leading-tight">AI System Lead Engineer</p>
+              <p className="text-[8px] font-bold theme-primary-text uppercase tracking-widest mt-1">DIT IUB</p>
+              <div className="mt-2 space-y-0.5 opacity-60">
+                 <p className="text-[7px] font-bold flex items-center gap-1"><Mail size={8} /> zeeshan.javed@iub.edu.pk</p>
+                 <p className="text-[7px] font-bold flex items-center gap-1"><Mail size={8} /> zeeshanjaved6767@gmail.com</p>
+                 <p className="text-[7px] font-bold flex items-center gap-1"><Phone size={8} /> +923042012500</p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex justify-center" title="Mr. Zeeshan Javed (AI Lead)">
+              <div className="w-8 h-8 rounded-full theme-primary-bg flex items-center justify-center text-white text-[10px] font-black">ZJ</div>
+            </div>
+          )}
+        </div>
       </aside>
 
       <main className="flex-1 flex flex-col relative">
@@ -367,8 +483,15 @@ const App: React.FC = () => {
               <span className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">Lead Engineer node: Zeeshan Javed</span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-             <button onClick={() => setIsLoggedIn(false)} className="text-[9px] font-bold uppercase text-slate-500 hover:text-red-400 transition-colors">Exit</button>
+          <div className="flex items-center gap-2">
+             <button 
+                onClick={handleSwitchKey} 
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold uppercase tracking-widest text-sky-400 hover:bg-sky-500/10 transition-all active:scale-95"
+                title="Switch API Key to bypass quota"
+              >
+                <KeyRound size={12} /> Switch Project
+             </button>
+             <button onClick={() => setIsLoggedIn(false)} className="px-3 py-1.5 text-[9px] font-bold uppercase text-slate-500 hover:text-red-400 transition-colors">Exit</button>
           </div>
         </header>
 
@@ -386,15 +509,19 @@ const App: React.FC = () => {
                             <span className="flex items-center gap-1.5">{msg.role === 'assistant' ? 'Neural Node' : 'Lead Engineer'}</span>
                             <span>{msg.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                           </div>
-                          <div className={`text-sm leading-normal whitespace-pre-wrap ${hasUrdu ? 'urdu-text' : ''}`}>{msg.content}</div>
-                          {msg.sources && msg.sources.length > 0 && (
-                            <div className={`mt-4 flex flex-wrap gap-2 border-t border-white/10 pt-2 ${hasUrdu ? 'justify-end' : ''}`}>
-                              {msg.sources.map((s, i) => (
-                                <a key={i} href={s.uri} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5 border border-white/10 text-[9px] font-bold hover:bg-white/10">
-                                  <ExternalLink size={10} className="text-sky-400" /> {s.title}
-                                </a>
-                              ))}
-                            </div>
+                          
+                          {/* Use the new ParsedContent component to handle tables and graphs */}
+                          <div className={`text-sm leading-normal ${hasUrdu ? 'urdu-text' : ''}`}>
+                            {msg.role === 'assistant' ? <ParsedContent content={msg.content} /> : <div className="whitespace-pre-wrap">{msg.content}</div>}
+                          </div>
+
+                          {msg.role === 'assistant' && msg.content.includes("RESOURCE_EXHAUSTED") && (
+                            <button 
+                              onClick={handleSwitchKey}
+                              className="mt-4 w-full py-2 rounded-xl bg-white/10 border border-white/20 text-[10px] font-black uppercase tracking-widest hover:bg-sky-500/20 transition-all flex items-center justify-center gap-2"
+                            >
+                              <KeyRound size={14} /> Switch Project Now
+                            </button>
                           )}
                         </div>
                       </div>
@@ -414,17 +541,31 @@ const App: React.FC = () => {
                   )}
                   <div ref={chatEndRef} />
                 </div>
+                
+                {!isTyping && (
+                   <div className="absolute bottom-24 left-1/2 -translate-x-1/2 opacity-30 flex items-center gap-2 select-none pointer-events-none">
+                      <div className="w-6 h-[1px] bg-slate-500"></div>
+                      <span className="text-[8px] font-black uppercase tracking-[0.2em]">Designed by Mr. Zeeshan Javed • DIT IUB</span>
+                      <div className="w-6 h-[1px] bg-slate-500"></div>
+                   </div>
+                )}
+
                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4">
                   <div className={`${theme.mode === 'light' ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0f172a] border-white/10 shadow-xl'} border rounded-2xl p-2 flex items-center gap-1`}>
                     <button onClick={() => fileInputRef.current?.click()} className="p-2 text-slate-500 hover:theme-primary-text"><Paperclip size={18} /></button>
-                    <input type="file" ref={fileInputRef} hidden accept="image/*,video/*" onChange={handleFileUpload} />
+                    <input type="file" id="chat-file" ref={fileInputRef} hidden accept="image/*,video/*" onChange={handleFileUpload} />
                     <button onClick={transcribeAudio} className={`p-2 ${isRecording ? 'text-red-500' : 'text-slate-500'}`}><Mic size={18} /></button>
-                    <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendMessage()} placeholder="Neural command terminal..." className="flex-1 bg-transparent border-none outline-none text-sm p-2" />
+                    <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendMessage()} placeholder="Neural command terminal (e.g., 'show device stats in a bar graph')..." className="flex-1 bg-transparent border-none outline-none text-sm p-2" />
                     <div className="flex gap-1">
                       <ToolToggle active={useSearch} onClick={() => { setUseSearch(!useSearch); setUseMaps(false); setUseFast(false); }} icon={<Globe size={14} />} title="Search Grounding" />
-                      <ToolToggle active={useMaps} onClick={() => { setUseMaps(!useMaps); setUseSearch(false); setUseFast(false); }} icon={<MapPin size={14} />} title="Maps Grounding" />
+                      <ToolToggle 
+                        active={useFast} 
+                        onClick={() => { setUseFast(!useFast); setUseSearch(false); setUseMaps(false); }} 
+                        icon={<Bolt size={14} />} 
+                        title="Fast Response (Use this if quota exceeded)" 
+                        className={lastErrorWasQuota && !useFast ? 'animate-pulse text-amber-500 border-amber-500/50' : ''}
+                      />
                       <ToolToggle active={useThinking} onClick={() => setUseThinking(!useThinking)} icon={<BrainCircuit size={14} />} title="Thinking Mode" />
-                      <ToolToggle active={useFast} onClick={() => { setUseFast(!useFast); setUseSearch(false); setUseMaps(false); }} icon={<Bolt size={14} />} title="Fast Response" />
                       <button onClick={handleSendMessage} className="p-2 theme-primary-bg rounded-lg text-white shadow-md"><Send size={16} /></button>
                     </div>
                   </div>
@@ -435,9 +576,8 @@ const App: React.FC = () => {
             {activeView === AppView.MEDIA_LAB && <MediaLabView theme={theme} />}
             {activeView === AppView.SETTINGS && <SettingsView theme={theme} onThemeChange={setTheme} />}
             {activeView === AppView.LIVE && <LiveSessionView />}
-            {activeView === AppView.SYSTEM_EVENTS && <SystemEventsView events={systemEvents} onGenerate={generateMockEvents} />}
             {activeView === AppView.INVENTORY && <InventoryView devices={devices} />}
-            {activeView === AppView.DEVICE_MANAGEMENT && <DeviceManagementView devices={devices} onUpdate={handleUpdateDevice} />}
+            {activeView === AppView.DEVICE_MANAGEMENT && <DeviceManagementView devices={devices} onUpdate={(d) => setDevices(prev => prev.map(dev => dev.id === d.id ? d : dev))} />}
           </div>
         </div>
       </main>
@@ -454,11 +594,11 @@ const MediaLabView: React.FC<{ theme: ThemeConfig }> = ({ theme }) => {
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [imgRef, setImgRef] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleAction = async () => {
     if (!prompt && mode !== 'edit') return;
-    if (mode === 'edit' && !imgRef) return;
-    setBusy(true); setMediaUrl(null);
+    setBusy(true); setMediaUrl(null); setStatus('Establishing Pipeline...');
     try {
       if (mode === 'generate') {
         setStatus('Synthesizing Plate (Gemini 3 Pro Image)...');
@@ -475,7 +615,7 @@ const MediaLabView: React.FC<{ theme: ThemeConfig }> = ({ theme }) => {
       }
       setStatus('Complete.');
     } catch (e: any) { 
-      setStatus(e?.message === 'RESOURCE_EXHAUSTED' ? 'Neural Overload: Quota Exceeded.' : 'Fault Detected.'); 
+      setStatus(e?.message === 'RESOURCE_EXHAUSTED' ? 'SYSTEM OVERLOAD: Quota Exceeded. Try switching API keys or projects.' : 'Fault Detected.'); 
     }
     finally { setBusy(false); }
   };
@@ -483,66 +623,69 @@ const MediaLabView: React.FC<{ theme: ThemeConfig }> = ({ theme }) => {
   return (
     <div className="p-6 h-full overflow-y-auto custom-scrollbar">
       <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Media Lab</h2>
-          <div className="p-2 theme-primary-bg rounded-lg text-white"><Sparkles size={18} /></div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-bold">Media Lab</h2>
+            <div className="p-2 theme-primary-bg rounded-lg text-white"><Sparkles size={18} /></div>
+          </div>
+          
+          <div className={`relative flex-1 max-w-md w-full ${theme.mode === 'light' ? 'text-slate-900' : 'text-white'}`}>
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input 
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search assets, templates or history..." 
+              className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-xs font-medium outline-none transition-all ${theme.mode === 'light' ? 'bg-white border-slate-200 focus:border-sky-500 shadow-sm' : 'bg-slate-900/60 border-white/5 focus:theme-primary-border shadow-inner'}`}
+            />
+          </div>
         </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-7 space-y-6 p-6 rounded-2xl border bg-slate-900/40 border-white/5">
             <div className="flex gap-1 p-1 bg-black/20 rounded-xl w-fit">
-              <button onClick={() => setMode('generate')} className={`px-4 py-2 rounded-lg text-[10px] uppercase font-bold transition-all ${mode === 'generate' ? 'theme-primary-bg text-white' : 'text-slate-500 hover:text-slate-300'}`}>Generate</button>
-              <button onClick={() => setMode('edit')} className={`px-4 py-2 rounded-lg text-[10px] uppercase font-bold transition-all ${mode === 'edit' ? 'theme-primary-bg text-white' : 'text-slate-500 hover:text-slate-300'}`}>Edit</button>
-              <button onClick={() => setMode('video')} className={`px-4 py-2 rounded-lg text-[10px] uppercase font-bold transition-all ${mode === 'video' ? 'theme-primary-bg text-white' : 'text-slate-500 hover:text-slate-300'}`}>Video</button>
+              {['generate', 'edit', 'video'].map((m) => (
+                <button key={m} onClick={() => setMode(m as any)} className={`px-4 py-2 rounded-lg text-[10px] uppercase font-bold transition-all ${mode === m ? 'theme-primary-bg text-white' : 'text-slate-500 hover:text-slate-300'}`}>{m}</button>
+              ))}
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">Framing Grid</label>
                 <div className="grid grid-cols-4 gap-1">
-                  {ASPECT_RATIO_OPTIONS.map(opt => (
-                    <button key={opt.value} onClick={() => setAspect(opt.value)} className={`p-2 rounded-lg border text-[8px] font-bold transition-all ${aspect === opt.value ? 'theme-primary-border theme-primary-text bg-current-10' : 'border-white/5 text-slate-500 hover:border-white/20'}`}>{opt.value}</button>
+                  {['1:1', '2:3', '3:2', '3:4', '4:3', '9:16', '16:9', '21:9'].map(v => (
+                    <button key={v} onClick={() => setAspect(v as any)} className={`p-2 rounded-lg border text-[8px] font-bold transition-all ${aspect === v ? 'theme-primary-border theme-primary-text bg-current-10' : 'border-white/5 text-slate-500 hover:border-white/20'}`}>{v}</button>
                   ))}
                 </div>
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">Synthesis Fidelity</label>
                 <div className="grid grid-cols-3 gap-1">
-                  {RESOLUTION_OPTIONS.map(opt => (
-                    <button key={opt.value} onClick={() => setSize(opt.value)} className={`p-2 rounded-lg border text-[8px] font-bold transition-all ${size === opt.value ? 'theme-primary-border theme-primary-text bg-current-10' : 'border-white/5 text-slate-500 hover:border-white/20'}`}>{opt.value}</button>
+                  {['1K', '2K', '4K'].map(v => (
+                    <button key={v} onClick={() => setSize(v as any)} className={`p-2 rounded-lg border text-[8px] font-bold transition-all ${size === v ? 'theme-primary-border theme-primary-text bg-current-10' : 'border-white/5 text-slate-500 hover:border-white/20'}`}>{v}</button>
                   ))}
                 </div>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">Instruction Set</label>
-              <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder={mode === 'edit' ? "e.g. Add a retro filter / Remove background person" : "Neural synthesis prompt..."} className="w-full h-32 bg-black/20 border border-white/10 rounded-xl p-4 text-sm focus:theme-primary-border outline-none transition-all" />
-            </div>
+            <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Neural synthesis prompt..." className="w-full h-32 bg-black/20 border border-white/10 rounded-xl p-4 text-sm focus:theme-primary-border outline-none" />
             
             <div className="flex justify-between items-center pt-4 border-t border-white/5">
-              <button onClick={() => document.getElementById('media-ref-upl')?.click()} className="text-[10px] font-bold uppercase theme-primary-text flex items-center gap-2 hover:underline transition-all"><UploadCloud size={16} /> {imgRef ? 'Asset Buffered' : 'Upload Reference Asset'}</button>
+              <button onClick={() => document.getElementById('media-ref-upl')?.click()} className="text-[10px] font-bold uppercase theme-primary-text flex items-center gap-2 hover:underline"><UploadCloud size={16} /> {imgRef ? 'Ref Asset Loaded' : 'Upload Reference'}</button>
               <input type="file" id="media-ref-upl" hidden accept="image/*" onChange={e => {
                 const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = ev => setImgRef(ev.target?.result as string); r.readAsDataURL(f); }
               }} />
-              <button onClick={handleAction} disabled={busy} className="px-8 py-3 theme-primary-bg rounded-xl text-[10px] font-bold uppercase text-white shadow-lg active:scale-95 transition-all">{busy ? 'Synthesis In Progress...' : 'Initialize Pipeline'}</button>
+              <button onClick={handleAction} disabled={busy} className="px-8 py-3 theme-primary-bg rounded-xl text-[10px] font-bold uppercase text-white shadow-lg">{busy ? 'Synthesizing...' : 'Initialize Pipeline'}</button>
             </div>
             {status && <p className="text-[10px] theme-primary-text font-bold uppercase tracking-widest animate-pulse">{status}</p>}
           </div>
-          
-          <div className="lg:col-span-5 border border-white/5 rounded-2xl bg-black/20 flex flex-col items-center justify-center p-6 min-h-[450px] relative overflow-hidden shadow-inner">
+          <div className="lg:col-span-5 border border-white/5 rounded-2xl bg-black/20 flex items-center justify-center p-6 min-h-[400px]">
             {mediaUrl ? (
-              <div className="space-y-6 w-full flex flex-col items-center">
-                <div className="rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-black">
-                  {mode === 'video' ? <video src={mediaUrl} controls autoPlay loop className="max-w-full h-auto" /> : <img src={mediaUrl} className="max-w-full h-auto" />}
-                </div>
-                <a href={mediaUrl} download className="flex items-center gap-2 px-8 py-3 theme-primary-bg rounded-xl text-[10px] font-bold uppercase text-white shadow-xl hover:opacity-90 transition-all"><Download size={16} /> Export Master Asset</a>
+              <div className="space-y-4 w-full text-center">
+                {mode === 'video' ? <video src={mediaUrl} controls autoPlay loop className="rounded-xl shadow-2xl" /> : <img src={mediaUrl} className="rounded-xl shadow-2xl" />}
+                <a href={mediaUrl} download className="inline-flex items-center gap-2 px-6 py-2 theme-primary-bg rounded-lg text-[10px] font-bold uppercase text-white"><Download size={14} /> Download Asset</a>
               </div>
-            ) : (
-              <div className="text-center opacity-20 space-y-4">
-                <Binary size={64} className="mx-auto" />
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em]">Awaiting Uplink</p>
-              </div>
-            )}
+            ) : <div className="text-center opacity-20"><Binary size={48} className="mx-auto mb-2" /><p className="text-[8px] font-black uppercase tracking-widest">Awaiting Uplink</p></div>}
           </div>
         </div>
       </div>
@@ -553,137 +696,262 @@ const MediaLabView: React.FC<{ theme: ThemeConfig }> = ({ theme }) => {
 const DeviceManagementView: React.FC<{ devices: Device[], onUpdate: (d: Device) => void }> = ({ devices, onUpdate }) => {
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [schematicStyle, setSchematicStyle] = useState<'Blueprint' | 'Digital Twin' | 'X-Ray'>('Blueprint');
+  const [copiedIp, setCopiedIp] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedDevice) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
-      onUpdate({ ...selectedDevice, image: result });
-      setSelectedDevice({ ...selectedDevice, image: result });
-    };
-    reader.readAsDataURL(file);
+  const handleCopyIp = (ip: string) => {
+    navigator.clipboard.writeText(ip);
+    setCopiedIp(true);
+    setTimeout(() => setCopiedIp(false), 2000);
+  };
+
+  const handleMaintenanceToggle = () => {
+    if (!selectedDevice) return;
+    const newStatus = selectedDevice.status === 'Maintenance' ? 'Online' : 'Maintenance';
+    const updated = { ...selectedDevice, status: newStatus as any };
+    onUpdate(updated);
+    setSelectedDevice(updated);
   };
 
   const handleGenerateSchematic = async () => {
     if (!selectedDevice) return;
     setIsGenerating(true);
     try {
-      const prompt = `Highly detailed technical product schematic of a ${selectedDevice.brand} ${selectedDevice.model} ${selectedDevice.type}, industrial clean background, 8k resolution, professional photography style.`;
+      let promptPrefix = "";
+      if (schematicStyle === 'Blueprint') {
+        promptPrefix = "Professional technical blueprint engineering drawing, blue background with clean white technical lines, ISO standard, isometric view.";
+      } else if (schematicStyle === 'Digital Twin') {
+        promptPrefix = "Photorealistic 3D digital twin render, studio lighting, hyper-realistic, high-tech industrial aesthetic, floating in void.";
+      } else if (schematicStyle === 'X-Ray') {
+        promptPrefix = "Internal hardware X-Ray vision view, transparent outer casing revealing complex circuitry and chips, tech-noir aesthetic, glowing trace paths.";
+      }
+
+      const prompt = `${promptPrefix} A ${selectedDevice.brand} ${selectedDevice.model} ${selectedDevice.type}. Highly detailed engineering schematic with component callouts and technical labels.`;
+      
       const url = await gemini.generateImage(prompt, { aspectRatio: '1:1', imageSize: '1K' });
       if (url) {
         onUpdate({ ...selectedDevice, image: url });
         setSelectedDevice({ ...selectedDevice, image: url });
       }
-    } catch (e) {
-      console.error("Schematic generation failed.", e);
-    } finally {
-      setIsGenerating(false);
-    }
+    } catch (e) { 
+      console.error(e);
+    } finally { setIsGenerating(false); }
   };
 
   return (
-    <div className="p-6 h-full flex flex-col animate-in fade-in duration-500 overflow-hidden">
-      <div className="mb-8 flex items-end justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Mesh Node Control</h2>
-          <p className="text-slate-500 text-[10px] uppercase tracking-[0.4em] mt-1">Real-time hardware gateway and asset visualization.</p>
+    <div className="p-6 h-full flex flex-col overflow-hidden">
+      <div className="mb-6 flex justify-between items-end">
+        <div><h2 className="text-2xl font-bold">Mesh Node Control</h2><p className="text-[10px] uppercase text-slate-500 tracking-[0.3em]">Real-time hardware visualization</p></div>
+        <div className="flex items-center gap-2">
+           <Radio size={20} className="theme-primary-text animate-pulse" />
         </div>
-        <Radio size={24} className="theme-primary-text animate-pulse" />
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 overflow-hidden">
-        {/* Device List */}
-        <div className="lg:col-span-4 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-2">
-          {devices.map(d => (
-            <button 
-              key={d.id}
-              onClick={() => setSelectedDevice(d)}
-              className={`p-4 rounded-2xl border text-left transition-all flex items-center gap-4 group ${
-                selectedDevice?.id === d.id 
-                ? 'theme-primary-border bg-current-10 shadow-lg' 
-                : 'border-white/5 bg-slate-900/40 hover:border-white/20'
-              }`}
-            >
-              <div className={`p-2.5 rounded-xl ${selectedDevice?.id === d.id ? 'theme-primary-bg text-white' : 'bg-slate-800 text-slate-500 group-hover:text-slate-300'}`}>
-                <Server size={18} />
-              </div>
-              <div className="overflow-hidden">
-                <p className={`text-xs font-bold truncate ${selectedDevice?.id === d.id ? 'theme-primary-text' : 'text-slate-200'}`}>{d.name}</p>
-                <p className="text-[9px] font-medium text-slate-500 uppercase tracking-widest">{d.brand} • {d.type}</p>
-              </div>
-            </button>
-          ))}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 overflow-hidden">
+        <div className="lg:col-span-4 overflow-y-auto custom-scrollbar space-y-2">
+          {devices.map(d => {
+            const statusColor = d.status === 'Online' ? 'bg-emerald-500' : d.status === 'Offline' ? 'bg-rose-500' : 'bg-amber-500';
+            return (
+              <button 
+                key={d.id} 
+                onClick={() => setSelectedDevice(d)} 
+                className={`w-full p-4 rounded-xl border text-left transition-all flex items-center gap-4 ${selectedDevice?.id === d.id ? 'theme-primary-border bg-current-5 shadow-lg' : 'border-white/5 bg-slate-900/40'}`}
+              >
+                <div className={`p-2 rounded-lg ${selectedDevice?.id === d.id ? 'theme-primary-bg text-white' : 'bg-slate-800'}`}><Server size={16} /></div>
+                <div className="overflow-hidden flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-bold truncate">{d.name}</p>
+                    <div className={`w-1.5 h-1.5 rounded-full ${statusColor} shadow-[0_0_8px_rgba(0,0,0,0.5)] animate-pulse shadow-current`}></div>
+                  </div>
+                  <p className="text-[9px] text-slate-500 uppercase">{d.brand} • {d.type}</p>
+                </div>
+              </button>
+            );
+          })}
         </div>
-
-        {/* Details and Asset Manager */}
-        <div className="lg:col-span-8 bg-slate-900/40 border border-white/5 rounded-3xl p-8 overflow-y-auto custom-scrollbar relative">
+        <div className="lg:col-span-8 bg-slate-900/40 border border-white/5 rounded-2xl p-6 overflow-y-auto custom-scrollbar relative">
           {selectedDevice ? (
-            <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
-              <div className="flex flex-col md:flex-row gap-10 items-start">
-                {/* Image Section */}
-                <div className="w-full md:w-64 space-y-4">
-                  <div className="aspect-square rounded-2xl border-2 border-dashed border-white/10 bg-black/40 flex items-center justify-center overflow-hidden relative group">
-                    {selectedDevice.image ? (
-                      <img src={selectedDevice.image} className="w-full h-full object-cover" alt="Node Asset" />
+            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+              {/* Maintenance Alert Banner */}
+              {selectedDevice.status === 'Maintenance' && (
+                <div className="flex items-start gap-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 animate-in zoom-in-95 duration-300">
+                  <ShieldAlert size={20} className="text-amber-500 mt-1 shrink-0" />
+                  <div className="space-y-1">
+                    <h4 className="text-[10px] font-black uppercase text-amber-500 tracking-widest">Operational Isolation Active</h4>
+                    <p className="text-[9px] font-bold text-slate-400 leading-relaxed uppercase tracking-tight">This node is currently isolated for maintenance. Automated neural scans and system-wide alerts are suspended to prevent false positives.</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-6">
+                <div className="w-64 h-64 rounded-xl border-2 border-dashed border-white/10 bg-black flex items-center justify-center overflow-hidden relative group shrink-0 shadow-2xl">
+                  {selectedDevice.image ? (
+                    <>
+                      <img src={selectedDevice.image} className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                         <a href={selectedDevice.image} download={`${selectedDevice.name}_Schematic.png`} className="p-2 bg-white/20 backdrop-blur-md rounded-lg text-white hover:bg-white/40"><FileDown size={20} /></a>
+                         <button onClick={() => setSelectedDevice({...selectedDevice, image: undefined})} className="p-2 bg-red-500/20 backdrop-blur-md rounded-lg text-red-400 hover:bg-red-500/40"><Trash2 size={20} /></button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center space-y-2">
+                      <ImageIcon size={40} className="opacity-10 mx-auto" />
+                      <p className="text-[8px] font-black uppercase text-slate-700 tracking-[0.2em]">Missing Visual Matrix</p>
+                    </div>
+                  )}
+                  {isGenerating && (
+                    <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-3 z-10">
+                      <Loader2 size={32} className="animate-spin theme-primary-text" />
+                      <p className="text-[8px] font-black uppercase tracking-[0.4em] theme-primary-text animate-pulse">Synthesizing Asset...</p>
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 space-y-6">
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                    <DeviceField label="Host Identity" value={selectedDevice.name} />
+                    <DeviceField label="Link Status" value={selectedDevice.status} />
+                    
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-black uppercase text-slate-600 tracking-widest">Active Logic IP</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold mono text-sky-400 truncate">{selectedDevice.ip}</p>
+                        <button 
+                          onClick={() => handleCopyIp(selectedDevice.ip)} 
+                          title="Copy Command (IP)"
+                          className={`p-1.5 rounded-lg border transition-all ${copiedIp ? 'theme-primary-bg text-white border-transparent' : 'border-white/5 text-slate-500 hover:bg-black/20'}`}
+                        >
+                          {copiedIp ? <Check size={12} /> : <Copy size={12} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <DeviceField label="Hardware Vendor" value={selectedDevice.brand} />
+                  </div>
+
+                  {/* Maintenance Mode Toggle Control */}
+                  <div className="pt-4 border-t border-white/5 flex items-center justify-between">
+                     <div className="space-y-0.5">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Maintenance Protocol</p>
+                        <p className="text-[8px] font-bold text-slate-600 uppercase">Suspend Automated Monitoring</p>
+                     </div>
+                     <button 
+                        onClick={handleMaintenanceToggle}
+                        className={`relative w-12 h-6 rounded-full transition-all duration-300 border p-1 ${selectedDevice.status === 'Maintenance' ? 'theme-primary-bg theme-primary-border' : 'bg-slate-800 border-white/10'}`}
+                     >
+                        <div className={`w-4 h-4 rounded-full bg-white transition-all duration-300 shadow-sm ${selectedDevice.status === 'Maintenance' ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                     </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-6 border-t border-white/5">
+                <div className="flex flex-col gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
+                      <Palette size={12} className="theme-primary-text" /> AI Schematic Style
+                    </label>
+                    <div className="flex gap-2 p-1 bg-black/30 rounded-xl w-fit border border-white/5">
+                      {[
+                        { id: 'Blueprint', icon: <FileText size={14} /> },
+                        { id: 'Digital Twin', icon: <Cube size={14} /> },
+                        { id: 'X-Ray', icon: <Cpu size={14} /> }
+                      ].map(style => (
+                        <button 
+                          key={style.id} 
+                          onClick={() => setSchematicStyle(style.id as any)}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${schematicStyle === style.id ? 'theme-primary-bg text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                          {style.icon} {style.id}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => fileInputRef.current?.click()} 
+                      className="px-6 py-3 bg-slate-800 hover:bg-slate-700 transition-colors rounded-xl text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-2"
+                    >
+                      <UploadCloud size={16} /> Upload CORE
+                    </button>
+                    <input type="file" id="dev-file" ref={fileInputRef} hidden accept="image/*" onChange={e => {
+                      const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = ev => { onUpdate({...selectedDevice, image: ev.target?.result as string}); setSelectedDevice({...selectedDevice, image: ev.target?.result as string}); }; r.readAsDataURL(f); }
+                    }} />
+                    <button 
+                      onClick={handleGenerateSchematic} 
+                      disabled={isGenerating} 
+                      className="flex-1 py-3 theme-primary-bg rounded-xl text-[9px] font-black uppercase text-white tracking-[0.2em] hover:opacity-90 transition-all shadow-[0_0_20px_rgba(14,165,233,0.3)] disabled:opacity-50 flex items-center justify-center gap-3"
+                    >
+                      <Wand2 size={18} /> Generate AI {schematicStyle}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Enhanced Network Genealogy Timeline */}
+              <div className="space-y-6 pt-6 border-t border-white/5">
+                 <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-slate-400">
+                        <History size={16} className="theme-primary-text" />
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.25em]">Network Genealogy Audit</h3>
+                    </div>
+                    <div className="px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-[9px] font-black uppercase theme-primary-text shadow-[0_0_15px_rgba(14,165,233,0.1)]">
+                       Audit Buffer: {selectedDevice.ipHistory?.length || 0} Fragments
+                    </div>
+                 </div>
+                 
+                 <div className="relative pl-6 space-y-6 before:content-[''] before:absolute before:left-[21px] before:top-1 before:bottom-1 before:w-px before:bg-gradient-to-b before:from-sky-500/50 before:via-white/5 before:to-white/5">
+                    {selectedDevice.ipHistory && selectedDevice.ipHistory.length > 0 ? (
+                      [...selectedDevice.ipHistory].reverse().map((oldIp, idx) => {
+                        const isCurrent = oldIp === selectedDevice.ip;
+                        return (
+                          <div key={idx} className="relative flex items-center gap-6 group">
+                             <div className={`absolute left-[-5px] w-2.5 h-2.5 rounded-full border-2 transition-all duration-500 z-10 ${isCurrent ? 'theme-primary-bg theme-primary-border shadow-[0_0_12px_var(--primary)] animate-pulse scale-110' : 'bg-slate-900 border-white/20'}`}></div>
+                             
+                             <div className={`flex-1 flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl border transition-all duration-300 group/item ${isCurrent ? 'bg-sky-500/5 border-sky-500/30 shadow-[0_0_20px_rgba(14,165,233,0.05)]' : 'bg-black/20 border-white/5 hover:border-white/10'}`}>
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex items-center gap-3">
+                                    <span className={`text-[10px] font-black mono tracking-tighter ${isCurrent ? 'theme-primary-text' : 'text-slate-600'}`}>
+                                      [v.{String(selectedDevice.ipHistory.length - idx).padStart(2, '0')}]
+                                    </span>
+                                    <span className={`mono text-sm font-bold tracking-tight ${isCurrent ? 'text-white' : 'text-slate-400'} group-hover/item:text-sky-400 transition-colors`}>
+                                      {oldIp}
+                                    </span>
+                                    {isCurrent && (
+                                      <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-[8px] font-black uppercase text-emerald-400 tracking-widest">Active</span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-4 text-[9px] font-bold uppercase text-slate-600 tracking-widest">
+                                     <span className="flex items-center gap-1"><Terminal size={10} /> Log ID: {Math.floor(Math.random() * 900000 + 100000)}</span>
+                                     <span className="flex items-center gap-1"><BadgeCheck size={10} /> Verified by System Core</span>
+                                  </div>
+                                </div>
+                                <div className="mt-3 sm:mt-0 flex items-center gap-2">
+                                  <button 
+                                     onClick={() => handleCopyIp(oldIp)} 
+                                     title="Copy Command ID"
+                                     className={`p-2 rounded-xl transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest ${isCurrent ? 'theme-primary-bg text-white shadow-lg' : 'text-slate-500 hover:text-sky-400 hover:bg-sky-400/10'}`}
+                                  >
+                                     <Copy size={14} /> {isCurrent ? 'Active Command' : 'Copy'}
+                                  </button>
+                                </div>
+                             </div>
+                          </div>
+                        );
+                      })
                     ) : (
-                      <ImageIcon size={48} className="text-slate-700 opacity-50" />
-                    )}
-                    {isGenerating && (
-                      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
-                        <Loader2 size={24} className="animate-spin theme-primary-text" />
-                        <span className="text-[8px] font-black uppercase theme-primary-text tracking-widest">Synthesizing...</span>
+                      <div className="flex flex-col items-center justify-center py-12 opacity-30 border-2 border-dashed border-white/5 rounded-3xl">
+                         <History size={32} className="mb-3 text-slate-600 animate-spin-slow" />
+                         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-600">Genetic Memory Buffer Empty</p>
                       </div>
                     )}
-                  </div>
-                  
-                  <div className="flex flex-col gap-2">
-                    <button 
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex items-center justify-center gap-2 py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all"
-                    >
-                      <UploadCloud size={14} /> Upload Asset
-                    </button>
-                    <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handleFileUpload} />
-                    <button 
-                      disabled={isGenerating}
-                      onClick={handleGenerateSchematic}
-                      className="flex items-center justify-center gap-2 py-2.5 px-4 theme-primary-bg hover:opacity-90 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all disabled:opacity-50"
-                    >
-                      <Wand2 size={14} /> Generate Schematic
-                    </button>
-                  </div>
-                </div>
-
-                {/* Info Section */}
-                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-8">
-                  <DeviceField label="Host Logic Name" value={selectedDevice.name} />
-                  <DeviceField label="Asset Category" value={selectedDevice.type} />
-                  <DeviceField label="Logic IP" value={selectedDevice.ip} mono />
-                  <DeviceField label="Mesh Status" value={selectedDevice.status} highlight={selectedDevice.status === 'Online'} />
-                  <DeviceField label="Hardware Vendor" value={selectedDevice.brand} />
-                  <DeviceField label="Model Sequence" value={selectedDevice.model} />
-                  <DeviceField label="Physical Cell" value={selectedDevice.location} />
-                  <DeviceField label="Hardware ID" value={selectedDevice.macAddress} mono />
-                </div>
-              </div>
-
-              <div className="pt-8 border-t border-white/5 space-y-4">
-                <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Technical Specifications</h3>
-                <p className="text-sm text-slate-300 leading-relaxed bg-black/20 p-5 rounded-2xl border border-white/5">
-                  {selectedDevice.specs}
-                </p>
+                 </div>
               </div>
             </div>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-center opacity-30 gap-4">
-              <Layers2 size={64} className="theme-primary-text" />
-              <div className="space-y-1">
-                <h3 className="text-xl font-bold uppercase tracking-tighter">Awaiting Link</h3>
-                <p className="text-[10px] uppercase tracking-widest">Select a logical node from the mesh to begin recalibration.</p>
-              </div>
+            <div className="h-full flex flex-col items-center justify-center opacity-20">
+              <Layers2 size={48} />
+              <p className="text-[10px] uppercase font-bold mt-4">Select Grid Node</p>
             </div>
           )}
         </div>
@@ -691,15 +959,6 @@ const DeviceManagementView: React.FC<{ devices: Device[], onUpdate: (d: Device) 
     </div>
   );
 };
-
-const DeviceField: React.FC<{ label: string, value: string, mono?: boolean, highlight?: boolean }> = ({ label, value, mono, highlight }) => (
-  <div className="space-y-1.5">
-    <p className="text-[8px] font-black uppercase text-slate-600 tracking-widest">{label}</p>
-    <p className={`text-sm font-semibold tracking-tight ${mono ? 'mono text-sky-400' : 'text-slate-200'} ${highlight ? 'text-emerald-400' : ''}`}>
-      {value}
-    </p>
-  </div>
-);
 
 const SettingsView: React.FC<{ theme: ThemeConfig, onThemeChange: (t: ThemeConfig) => void }> = ({ theme, onThemeChange }) => {
   const primaryColors = [{ name: 'Sky', value: '#0ea5e9' }, { name: 'Emerald', value: '#10b981' }, { name: 'Rose', value: '#f43f5e' }, { name: 'Amber', value: '#f59e0b' }];
@@ -755,23 +1014,6 @@ const LiveSessionView: React.FC = () => {
   );
 };
 
-const SystemEventsView: React.FC<{ events: SystemEvent[], onGenerate: () => void }> = ({ events, onGenerate }) => (
-  <div className="p-6 h-full overflow-y-auto custom-scrollbar animate-in slide-in-from-right duration-500">
-    <div className="flex justify-between items-end mb-10">
-      <div><h2 className="text-2xl font-bold tracking-tight">Sentinel Telemetry</h2><p className="text-slate-500 text-[9px] font-bold uppercase tracking-widest mt-1">Real-time Node Monitoring</p></div>
-      <button onClick={onGenerate} className="px-6 py-2.5 theme-primary-bg rounded-xl text-[10px] font-bold uppercase text-white shadow-xl active:scale-95 transition-all">Refresh Mesh Status</button>
-    </div>
-    <div className="space-y-4 pb-20">
-      {events.map(e => (
-        <div key={e.id} className="bg-slate-900/40 border border-white/5 rounded-2xl p-5 flex gap-5 hover:border-white/10 transition-all shadow-sm group">
-          <div className="p-3 bg-current-5 rounded-xl theme-primary-text group-hover:scale-110 transition-transform"><Info size={20} /></div>
-          <div><p className="text-[8px] font-black uppercase text-slate-500 tracking-widest mb-1">{e.timestamp.toLocaleTimeString()}</p><p className="text-sm font-medium tracking-tight text-slate-200">{e.message}</p></div>
-        </div>
-      ))}
-    </div>
-  </div>
-);
-
 const InventoryView: React.FC<{ devices: Device[] }> = ({ devices }) => (
   <div className="p-6 h-full overflow-y-auto custom-scrollbar animate-in fade-in duration-500">
     <div className="mb-10"><h2 className="text-2xl font-bold tracking-tight">Logical Inventory</h2><p className="text-slate-500 text-[9px] font-bold uppercase tracking-widest mt-1">DIT Hardware Infrastructure Mapping</p></div>
@@ -794,12 +1036,19 @@ const InventoryView: React.FC<{ devices: Device[] }> = ({ devices }) => (
   </div>
 );
 
+const DeviceField: React.FC<{ label: string, value: string, mono?: boolean }> = ({ label, value, mono }) => (
+  <div className="space-y-1">
+    <p className="text-[8px] font-black uppercase text-slate-600 tracking-widest">{label}</p>
+    <p className={`text-sm font-semibold truncate ${mono ? 'mono text-sky-400' : 'text-slate-200'}`}>{value}</p>
+  </div>
+);
+
 const SidebarItem: React.FC<{ icon: any, label: string, active: boolean, collapsed: boolean, onClick: () => void }> = ({ icon, label, active, collapsed, onClick }) => (
   <button onClick={onClick} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[12px] font-semibold transition-all group ${active ? 'theme-primary-bg text-white shadow-xl scale-[1.02]' : 'text-slate-500 hover:bg-black/20 hover:theme-primary-text'}`}>{icon}{!collapsed && <span className="truncate tracking-tight">{label}</span>}</button>
 );
 
-const ToolToggle: React.FC<{ active: boolean, onClick: () => void, icon: any, title?: string }> = ({ active, onClick, icon, title }) => (
-  <button onClick={onClick} title={title} className={`p-2.5 rounded-xl border transition-all ${active ? 'theme-primary-bg text-white border-transparent shadow-lg scale-110' : 'text-slate-500 border-white/5 hover:bg-black/20 hover:border-white/10'}`}>{icon}</button>
+const ToolToggle: React.FC<{ active: boolean, onClick: () => void, icon: any, title?: string, className?: string }> = ({ active, onClick, icon, title, className }) => (
+  <button onClick={onClick} title={title} className={`p-2.5 rounded-xl border transition-all ${active ? 'theme-primary-bg text-white border-transparent shadow-lg scale-110' : 'text-slate-500 border-white/5 hover:bg-black/20 hover:border-white/10'} ${className}`}>{icon}</button>
 );
 
 const LoginPage: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
@@ -818,6 +1067,17 @@ const LoginPage: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
           <IUBDITLogo size={80} />
           <h2 className="text-3xl font-black uppercase tracking-tighter text-white">IUB Smart Assistant</h2>
           <p className="text-slate-500 text-[9px] font-bold uppercase tracking-[0.5em]">Neural Authentication Node</p>
+          <div className="pt-4 mt-4 border-t border-white/5 space-y-3">
+             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Lead Engineer: Mr. Zeeshan Javed</p>
+             <div className="flex flex-col items-center gap-1">
+                <p className="text-[8px] font-bold text-sky-500 uppercase tracking-widest">DIT IUB</p>
+                <div className="space-y-0.5 mt-1">
+                   <p className="text-[9px] text-slate-500 font-medium lowercase flex items-center justify-center gap-1.5"><Mail size={10} className="text-slate-600" /> zeeshan.javed@iub.edu.pk</p>
+                   <p className="text-[9px] text-slate-500 font-medium lowercase flex items-center justify-center gap-1.5"><Mail size={10} className="text-slate-600" /> zeeshanjaved6767@gmail.com</p>
+                   <p className="text-[9px] text-slate-500 font-medium lowercase flex items-center justify-center gap-1.5"><Phone size={10} className="text-slate-600" /> +923042012500</p>
+                </div>
+             </div>
+          </div>
         </div>
         <button onClick={handleLogin} disabled={loading} className="w-full py-5 theme-primary-bg rounded-2xl text-white font-black uppercase text-[11px] tracking-widest shadow-[0_0_30px_rgba(14,165,233,0.3)] hover:opacity-90 active:scale-95 transition-all">{loading ? 'Synchronizing Node...' : 'Establish System Link'}</button>
       </div>

@@ -59,29 +59,27 @@ export class GeminiService {
   }
 
   /**
-   * Robust retry logic with aggressive exponential backoff for 429 errors.
+   * Helper to perform retries with exponential backoff for transient errors (like 429)
    */
-  private async withRetry<T>(fn: () => Promise<T>, maxRetries = 4): Promise<T> {
+  private async withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
     let lastError: any;
     for (let i = 0; i <= maxRetries; i++) {
       try {
         return await fn();
       } catch (err: any) {
         lastError = err;
-        const errMsg = err?.message || "";
         const isQuotaError = 
+          err?.message?.includes("429") || 
           err?.status === 429 || 
-          errMsg.includes("429") || 
-          errMsg.toLowerCase().includes("quota") ||
-          errMsg.toLowerCase().includes("exhausted") ||
-          errMsg.toLowerCase().includes("rate limit");
+          err?.message?.toLowerCase().includes("quota") ||
+          err?.message?.toLowerCase().includes("exhausted");
         
+        // If it's not a quota error or we've reached max retries, break
         if (!isQuotaError || i === maxRetries) break;
         
-        // Exponential backoff: 5s, 10s, 20s, 40s + jitter
-        // Free tier often requires substantial wait times
-        const delay = Math.pow(2, i) * 5000 + Math.random() * 2000;
-        console.warn(`[GeminiService] Quota exceeded. Retrying in ${Math.round(delay/1000)}s... (Attempt ${i + 1}/${maxRetries})`);
+        // Wait: i=0 -> 3s, i=1 -> 6s, i=2 -> 12s (+ jitter)
+        const delay = Math.pow(2, i) * 3000 + Math.random() * 1500;
+        console.warn(`Quota exceeded. Retrying in ${Math.round(delay)}ms... (Attempt ${i + 1}/${maxRetries})`);
         await new Promise(res => setTimeout(res, delay));
       }
     }
@@ -90,14 +88,15 @@ export class GeminiService {
 
   private async handleApiError(err: any): Promise<never> {
     console.error("Gemini API Error Detail:", err);
+    
     const errMsg = err?.message || "";
     
-    // Check if key selection needs reset
+    // Guidelines: Reset key if 404/Not Found
     if (errMsg.includes("Requested entity was not found.") && (window as any).aistudio) {
-      console.warn("API Key invalidated or missing. Resetting key selection.");
       await (window as any).aistudio.openSelectKey();
     }
     
+    // Enrich error message for the UI
     if (errMsg.includes("429") || errMsg.toLowerCase().includes("quota") || errMsg.toLowerCase().includes("exhausted")) {
       const quotaErr = new Error("RESOURCE_EXHAUSTED");
       (quotaErr as any).originalError = err;
@@ -107,11 +106,15 @@ export class GeminiService {
     throw err;
   }
 
+  async openKeySelector() {
+    if ((window as any).aistudio) {
+      await (window as any).aistudio.openSelectKey();
+    }
+  }
+
   async chat(prompt: string, history: any[] = [], options: ChatOptions = {}): Promise<{ text: string; sources: any[] }> {
     return this.withRetry(async () => {
       const ai = this.getAI();
-      
-      // Select model strictly based on capabilities
       let model = 'gemini-3-pro-preview'; 
 
       if (options.useSearch) {
@@ -131,27 +134,25 @@ export class GeminiService {
 
       if (options.useThinking) {
         config.thinkingConfig = { thinkingBudget: 32768 };
+        config.maxOutputTokens = 35000; 
       }
 
       if (options.useMaps) {
         tools.push({ googleMaps: {} });
         try {
           const pos = await new Promise<GeolocationPosition>((res, rej) => 
-            navigator.geolocation.getCurrentPosition(res, rej, { timeout: 3000 })
-          ).catch(() => null);
-          
-          if (pos) {
-            config.toolConfig = {
-              retrievalConfig: { 
-                latLng: { 
-                  latitude: pos.coords.latitude, 
-                  longitude: pos.coords.longitude 
-                } 
-              }
-            };
-          }
+            navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
+          );
+          config.toolConfig = {
+            retrievalConfig: { 
+              latLng: { 
+                latitude: pos.coords.latitude, 
+                longitude: pos.coords.longitude 
+              } 
+            }
+          };
         } catch (e) {
-          console.warn("Location context could not be injected for Maps grounding.");
+          console.warn("Location context unavailable for Maps grounding.");
         }
       } else if (options.useSearch) {
         tools.push({ googleSearch: {} });
@@ -159,7 +160,7 @@ export class GeminiService {
 
       if (tools.length > 0) config.tools = tools;
 
-      const contents: any[] = [...history];
+      const contents: any[] = history.length > 0 ? history : [];
       const parts: any[] = [{ text: prompt }];
       
       if (options.image) {
@@ -174,7 +175,7 @@ export class GeminiService {
       contents.push({ role: 'user', parts });
 
       const response = await ai.models.generateContent({ model, contents, config });
-      const text = response.text || "";
+      const text = response.text || "No response content generated.";
       
       const sources: any[] = [];
       const groundingMetadata = response.candidates?.[0]?.groundingMetadata;
@@ -241,14 +242,18 @@ export class GeminiService {
                 mimeType: 'image/jpeg',
               },
             },
-            { text: prompt },
+            {
+              text: prompt,
+            },
           ],
         },
       });
 
       if (response.candidates?.[0]?.content?.parts) {
         for (const part of response.candidates[0].content.parts) {
-          if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
+          if (part.inlineData) {
+            return `data:image/png;base64,${part.inlineData.data}`;
+          }
         }
       }
       return null;
@@ -273,7 +278,7 @@ export class GeminiService {
   }
 
   async generateVideo(prompt: string, aspectRatio: '16:9' | '9:16' = '16:9', startImage?: string, resolution: '720p' | '1080p' = '720p'): Promise<string> {
-    const ai = this.getAI();
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
       if (window.aistudio && !(await window.aistudio.hasSelectedApiKey())) {
         await window.aistudio.openSelectKey();
@@ -320,7 +325,7 @@ export class GeminiService {
     onerror: (e: any) => void;
     onclose: (e: any) => void;
   }) {
-    const ai = this.getAI();
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     return ai.live.connect({
       model: 'gemini-2.5-flash-native-audio-preview-09-2025',
       callbacks,
