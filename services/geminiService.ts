@@ -13,6 +13,17 @@ export interface ChatOptions {
   persona?: Persona;
 }
 
+/**
+ * Extracts MIME type and base64 data from a data URL.
+ */
+function parseDataUrl(dataUrl: string) {
+  const match = dataUrl.match(/^data:(.*?);base64,(.*)$/);
+  if (match) {
+    return { mimeType: match[1], data: match[2] };
+  }
+  return { mimeType: 'image/jpeg', data: dataUrl };
+}
+
 export function decodeBase64(base64: string) {
   const binaryString = atob(base64);
   const len = binaryString.length;
@@ -58,28 +69,17 @@ export class GeminiService {
     return new GoogleGenAI({ apiKey: process.env.API_KEY });
   }
 
-  /**
-   * Helper to perform retries with exponential backoff for transient errors (like 429)
-   */
-  private async withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+  private async withRetry<T>(fn: () => Promise<T>, maxRetries = 2): Promise<T> {
     let lastError: any;
     for (let i = 0; i <= maxRetries; i++) {
       try {
         return await fn();
       } catch (err: any) {
         lastError = err;
-        const isQuotaError = 
-          err?.message?.includes("429") || 
-          err?.status === 429 || 
-          err?.message?.toLowerCase().includes("quota") ||
-          err?.message?.toLowerCase().includes("exhausted");
-        
-        // If it's not a quota error or we've reached max retries, break
+        const errMsg = err?.message?.toLowerCase() || "";
+        const isQuotaError = errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("exhausted");
         if (!isQuotaError || i === maxRetries) break;
-        
-        // Wait: i=0 -> 3s, i=1 -> 6s, i=2 -> 12s (+ jitter)
-        const delay = Math.pow(2, i) * 3000 + Math.random() * 1500;
-        console.warn(`Quota exceeded. Retrying in ${Math.round(delay)}ms... (Attempt ${i + 1}/${maxRetries})`);
+        const delay = Math.pow(2, i) * 2000 + Math.random() * 1000;
         await new Promise(res => setTimeout(res, delay));
       }
     }
@@ -87,95 +87,61 @@ export class GeminiService {
   }
 
   private async handleApiError(err: any): Promise<never> {
-    console.error("Gemini API Error Detail:", err);
-    
     const errMsg = err?.message || "";
-    
-    // Guidelines: Reset key if 404/Not Found
     if (errMsg.includes("Requested entity was not found.") && (window as any).aistudio) {
       await (window as any).aistudio.openSelectKey();
     }
-    
-    // Enrich error message for the UI
     if (errMsg.includes("429") || errMsg.toLowerCase().includes("quota") || errMsg.toLowerCase().includes("exhausted")) {
-      const quotaErr = new Error("RESOURCE_EXHAUSTED");
-      (quotaErr as any).originalError = err;
-      throw quotaErr;
+      throw new Error("RESOURCE_EXHAUSTED");
     }
-
     throw err;
   }
 
   async openKeySelector() {
-    if ((window as any).aistudio) {
-      await (window as any).aistudio.openSelectKey();
-    }
+    if ((window as any).aistudio) await (window as any).aistudio.openSelectKey();
   }
 
   async chat(prompt: string, history: any[] = [], options: ChatOptions = {}): Promise<{ text: string; sources: any[] }> {
     return this.withRetry(async () => {
       const ai = this.getAI();
-      let model = 'gemini-3-pro-preview'; 
+      let model = 'gemini-3-flash-preview'; 
 
-      if (options.useSearch) {
-        model = 'gemini-3-flash-preview';
-      } else if (options.useMaps) {
-        model = 'gemini-2.5-flash';
-      } else if (options.useFast) {
-        model = 'gemini-flash-lite-latest';
-      } else if (options.useThinking) {
+      if (options.useThinking || options.persona === Persona.ARCHITECT) {
         model = 'gemini-3-pro-preview';
       }
 
-      const tools: any[] = [];
       const config: any = {
         systemInstruction: PERSONA_INSTRUCTIONS[options.persona || Persona.ARCHITECT],
       };
 
       if (options.useThinking) {
-        config.thinkingConfig = { thinkingBudget: 32768 };
-        config.maxOutputTokens = 35000; 
+        config.thinkingConfig = { thinkingBudget: 16000 };
       }
 
-      if (options.useMaps) {
-        tools.push({ googleMaps: {} });
-        try {
-          const pos = await new Promise<GeolocationPosition>((res, rej) => 
-            navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
-          );
-          config.toolConfig = {
-            retrievalConfig: { 
-              latLng: { 
-                latitude: pos.coords.latitude, 
-                longitude: pos.coords.longitude 
-              } 
-            }
-          };
-        } catch (e) {
-          console.warn("Location context unavailable for Maps grounding.");
-        }
-      } else if (options.useSearch) {
-        tools.push({ googleSearch: {} });
+      if (options.useSearch) {
+        config.tools = [{ googleSearch: {} }];
+      } else if (options.useMaps) {
+        model = 'gemini-2.5-flash';
+        config.tools = [{ googleMaps: {} }];
       }
 
-      if (tools.length > 0) config.tools = tools;
-
-      const contents: any[] = history.length > 0 ? history : [];
+      const contents = [...history];
       const parts: any[] = [{ text: prompt }];
       
       if (options.image) {
-        parts.unshift({ 
-          inlineData: { 
-            mimeType: 'image/jpeg', 
-            data: options.image.split(',')[1] || options.image 
-          } 
-        });
+        const { mimeType, data } = parseDataUrl(options.image);
+        parts.push({ inlineData: { mimeType, data } });
+      }
+
+      if (options.video) {
+        const { mimeType, data } = parseDataUrl(options.video);
+        parts.push({ inlineData: { mimeType, data } });
       }
 
       contents.push({ role: 'user', parts });
 
       const response = await ai.models.generateContent({ model, contents, config });
-      const text = response.text || "No response content generated.";
+      const text = response.text || "No response.";
       
       const sources: any[] = [];
       const groundingMetadata = response.candidates?.[0]?.groundingMetadata;
@@ -193,12 +159,13 @@ export class GeminiService {
   async transcribe(audioBase64: string): Promise<string> {
     return this.withRetry(async () => {
       const ai = this.getAI();
+      const { mimeType, data } = parseDataUrl(audioBase64);
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: {
           parts: [
-            { inlineData: { data: audioBase64, mimeType: 'audio/webm' } },
-            { text: "Accurately transcribe the provided audio input into text." }
+            { inlineData: { data, mimeType: mimeType === 'application/octet-stream' ? 'audio/webm' : mimeType } },
+            { text: "Transcribe this audio." }
           ]
         }
       });
@@ -219,122 +186,36 @@ export class GeminiService {
           }
         }
       });
-
-      if (response.candidates?.[0]?.content?.parts) {
-        for (const part of response.candidates[0].content.parts) {
-          if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
-        }
-      }
-      return null;
+      const part = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+      return part ? `data:image/png;base64,${part.inlineData.data}` : null;
     });
   }
 
-  async editImage(prompt: string, imageBase64: string): Promise<string | null> {
-    return this.withRetry(async () => {
-      const ai = this.getAI();
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: {
-          parts: [
-            {
-              inlineData: {
-                data: imageBase64.split(',')[1] || imageBase64,
-                mimeType: 'image/jpeg',
-              },
-            },
-            {
-              text: prompt,
-            },
-          ],
-        },
-      });
-
-      if (response.candidates?.[0]?.content?.parts) {
-        for (const part of response.candidates[0].content.parts) {
-          if (part.inlineData) {
-            return `data:image/png;base64,${part.inlineData.data}`;
-          }
-        }
-      }
-      return null;
+  async generateVideo(prompt: string, aspectRatio: '16:9' | '9:16' = '16:9'): Promise<string> {
+    const ai = this.getAI();
+    let operation = await ai.models.generateVideos({
+      model: 'veo-3.1-fast-generate-preview',
+      prompt,
+      config: { numberOfVideos: 1, resolution: '720p', aspectRatio }
     });
-  }
-
-  async generateSpeech(text: string): Promise<string | null> {
-    return this.withRetry(async () => {
-      const ai = this.getAI();
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text }] }],
-        config: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } }
-          }
-        }
-      });
-      return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
-    });
-  }
-
-  async generateVideo(prompt: string, aspectRatio: '16:9' | '9:16' = '16:9', startImage?: string, resolution: '720p' | '1080p' = '720p'): Promise<string> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    try {
-      if (window.aistudio && !(await window.aistudio.hasSelectedApiKey())) {
-        await window.aistudio.openSelectKey();
-      }
-
-      const config: any = { 
-        numberOfVideos: 1, 
-        resolution, 
-        aspectRatio 
-      };
-      
-      const payload: any = { 
-        model: 'veo-3.1-fast-generate-preview', 
-        prompt, 
-        config 
-      };
-      
-      if (startImage) {
-        payload.image = { 
-          imageBytes: startImage.split(',')[1], 
-          mimeType: 'image/jpeg' 
-        };
-      }
-
-      let operation = await ai.models.generateVideos(payload);
-      
-      while (!operation.done) {
-        await new Promise(res => setTimeout(res, 10000));
-        operation = await ai.operations.getVideosOperation({ operation: operation });
-      }
-      
-      const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-      const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
-      const blob = await response.blob();
-      return URL.createObjectURL(blob);
-    } catch (error) {
-      return await this.handleApiError(error);
+    while (!operation.done) {
+      await new Promise(res => setTimeout(res, 5000));
+      operation = await ai.operations.getVideosOperation({ operation: operation });
     }
+    const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
+    const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
   }
 
-  connectLive(callbacks: {
-    onopen: () => void;
-    onmessage: (m: LiveServerMessage) => void;
-    onerror: (e: any) => void;
-    onclose: (e: any) => void;
-  }) {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  connectLive(callbacks: any) {
+    const ai = this.getAI();
     return ai.live.connect({
       model: 'gemini-2.5-flash-native-audio-preview-09-2025',
       callbacks,
       config: {
         responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
-        },
-        systemInstruction: 'You are a helpful IT support agent for the Directorate of IT. Speak clearly and professionally.',
+        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } }
       }
     });
   }
