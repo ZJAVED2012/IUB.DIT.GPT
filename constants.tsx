@@ -1,5 +1,74 @@
 
-import { Device, ConfigTemplate, Persona } from './types';
+import { Device, ConfigTemplate, Persona, ThemeConfig } from './types';
+
+export const THEMES: ThemeConfig[] = [
+  {
+    id: 'iub-legacy',
+    name: 'IUB Classic',
+    mode: 'dark',
+    primary: '#0ea5e9',
+    secondary: '#64748b',
+    bg: '#020617',
+    sidebar: '#070b1d',
+    card: 'rgba(255, 255, 255, 0.03)',
+    border: 'rgba(255, 255, 255, 0.05)'
+  },
+  {
+    id: 'emerald-nexus',
+    name: 'Emerald Nexus',
+    mode: 'dark',
+    primary: '#10b981',
+    secondary: '#475569',
+    bg: '#02120b',
+    sidebar: '#041c12',
+    card: 'rgba(16, 185, 129, 0.05)',
+    border: 'rgba(16, 185, 129, 0.1)'
+  },
+  {
+    id: 'midnight-orchid',
+    name: 'Midnight Orchid',
+    mode: 'dark',
+    primary: '#a855f7',
+    secondary: '#4b5563',
+    bg: '#0f0714',
+    sidebar: '#180a22',
+    card: 'rgba(168, 85, 247, 0.05)',
+    border: 'rgba(168, 85, 247, 0.1)'
+  },
+  {
+    id: 'solar-terminal',
+    name: 'Solar Terminal',
+    mode: 'dark',
+    primary: '#f59e0b',
+    secondary: '#4b5563',
+    bg: '#0c0a09',
+    sidebar: '#1c1917',
+    card: 'rgba(245, 158, 11, 0.05)',
+    border: 'rgba(245, 158, 11, 0.1)'
+  },
+  {
+    id: 'crimson-security',
+    name: 'Crimson Security',
+    mode: 'dark',
+    primary: '#f43f5e',
+    secondary: '#4b5563',
+    bg: '#0f0103',
+    sidebar: '#1a0104',
+    card: 'rgba(244, 63, 94, 0.05)',
+    border: 'rgba(244, 63, 94, 0.1)'
+  },
+  {
+    id: 'arctic-light',
+    name: 'Arctic Clean',
+    mode: 'light',
+    primary: '#0ea5e9',
+    secondary: '#94a3b8',
+    bg: '#f8fafc',
+    sidebar: '#ffffff',
+    card: '#ffffff',
+    border: '#e2e8f0'
+  }
+];
 
 export const BASE_SYSTEM_PROMPT = `You are IUB Smart IT Assistant, the proprietary AI core of the Directorate of IT, IUB.
 LEAD AUTHORITY: Mr. Zeeshan Javed (AI System Lead Engineer).

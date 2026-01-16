@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
           --primary: #0ea5e9;
@@ -26,15 +26,24 @@
           background-color: var(--bg-main);
           color: var(--text-main);
           transition: background-color 0.3s, color 0.3s;
+          -webkit-font-smoothing: antialiased;
         }
         
         .mono { font-family: 'JetBrains Mono', monospace; }
         
-        /* Urdu Specific Styling */
+        /* --- Professional Urdu Specific Styling --- */
         .urdu-text { 
           font-family: 'Noto Nastaliq Urdu', 'Urdu Typesetting', 'Jameel Noori Nastaleeq', serif; 
-          line-height: 2.4; 
-          font-size: 1.15rem;
+          line-height: 2.2; /* Critical for Nastaliq clarity */
+          font-size: 1.25rem;
+          direction: rtl;
+          text-align: right;
+          word-spacing: 2px;
+          font-weight: 400;
+        }
+
+        /* Container for Urdu to ensure correct RTL layout */
+        .rtl-container {
           direction: rtl;
           text-align: right;
         }
@@ -63,7 +72,6 @@
           animation: scan 2s linear infinite;
         }
 
-        /* Dynamic classes to override hardcoded values if needed */
         .theme-primary-text { color: var(--primary); }
         .theme-primary-bg { background-color: var(--primary); }
         .theme-primary-border { border-color: var(--primary); }

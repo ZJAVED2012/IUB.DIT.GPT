@@ -211,7 +211,7 @@ export class GeminiService {
   connectLive(callbacks: any) {
     const ai = this.getAI();
     return ai.live.connect({
-      model: 'gemini-2.5-flash-native-audio-preview-09-2025',
+      model: 'gemini-2.5-flash-native-audio-preview-12-2025',
       callbacks,
       config: {
         responseModalities: [Modality.AUDIO],

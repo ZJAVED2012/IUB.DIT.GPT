@@ -62,7 +62,7 @@ export interface Device {
   softwareVersion?: string;
   powerRequirement?: string;
   ports?: string[];
-  image?: string; // New: Device visual asset
+  image?: string;
 }
 
 export interface SystemEvent {
@@ -83,8 +83,13 @@ export type AspectRatio = '1:1' | '2:3' | '3:2' | '3:4' | '4:3' | '9:16' | '16:9
 export type ImageSize = '1K' | '2K' | '4K';
 
 export interface ThemeConfig {
+  id: string;
+  name: string;
   mode: 'dark' | 'light';
-  primaryColor: string;
-  secondaryColor: string;
-  fontFamily: string;
+  primary: string;
+  secondary: string;
+  bg: string;
+  sidebar: string;
+  card: string;
+  border: string;
 }
