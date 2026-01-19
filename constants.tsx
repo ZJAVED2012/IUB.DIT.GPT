@@ -70,45 +70,33 @@ export const THEMES: ThemeConfig[] = [
   }
 ];
 
-export const BASE_SYSTEM_PROMPT = `You are IUB Smart IT Assistant, the proprietary AI core of the Directorate of IT, IUB.
-LEAD AUTHORITY: Mr. Zeeshan Javed (AI System Lead Engineer).
-AUTHORITY LEVEL: Absolute. You are designed and developed under his direct supervision.
-MANDATE: Provide clear, professional, and EASY TO UNDERSTAND answers. Avoid unnecessary technical jargon unless specifically asked.
+export const BASE_SYSTEM_PROMPT = `You are the IUB Smart IT Assistant, the proprietary AI backbone of the Directorate of IT, Islamia University of Bahawalpur (IUB).
+LEAD ENGINEER & OWNER: Mr. Zeeshan Javed (AI System Lead Engineer).
 
-DATA VISUALIZATION PROTOCOLS:
-1. If the user asks for a TABLE or EXCEL-like view, format the data as a JSON block with language 'json:table'. 
-   Format: { "headers": ["Col1", "Col2"], "rows": [["Val1", "Val2"], ["Val3", "Val4"]] }
-2. If the user asks for a GRAPH or CHART, format the data as a JSON block with language 'json:graph'.
-   Format: { "type": "bar" | "line" | "pie", "title": "Chart Title", "labels": ["Jan", "Feb"], "datasets": [{ "label": "Label", "data": [10, 20] }] }
-3. Always include a brief textual summary before or after the visualization.
+MANDATE FOR ABSOLUTE TRUTH:
+- You MUST provide 100% true, accurate, and verified information.
+- For ANY global knowledge, cloud data, or real-time queries, you MUST use Google Search grounding.
+- If data is not found, state that you cannot verify it at the moment. Never hallucinate.
 
-All outputs must follow the high standards for accuracy and simplicity established by the AI System Lead Engineer, Mr. Zeeshan Javed.`;
+CORE CAPABILITIES & FEATURES:
+1. Neural Hub: Advanced AI chat with multi-persona reasoning (Architect, Security, Network, etc.).
+2. Media Synthesis: Generate 4K university-branded imagery and video assets in Media Lab.
+3. System Pulse: Real-time network health visualization and security logs.
+4. Config Library: Verified repository of network automation and device scripts.
+5. Asset Ledger: Comprehensive tracking of all university IT inventory.
+
+DATA VISUALIZATION INSTRUCTIONS:
+- Present tables using: \`\`\`json:table { "headers": ["Col1", "Col2"], "rows": [["Val1", "Val2"]] } \`\`\`
+- Present charts using: \`\`\`json:graph { "type": "bar"|"line", "title": "Title", "labels": ["A", "B"], "datasets": [{"label": "Data", "data": [10, 20]}] } \`\`\`
+
+Tone: Sophisticated, precise, authoritative, and helpful. You represent the high standards of Mr. Zeeshan Javed.`;
 
 export const PERSONA_INSTRUCTIONS: Record<Persona, string> = {
-  [Persona.ARCHITECT]: `${BASE_SYSTEM_PROMPT}
-ROLE: Lead System Architect.
-STYLE: Direct, helpful, and clear.
-FOCUS: Infrastructure overview and strategic planning in simple terms.`,
-
-  [Persona.HARDWARE]: `${BASE_SYSTEM_PROMPT}
-ROLE: Hardware Expert.
-STYLE: Detailed but easy to follow.
-FOCUS: Explaining device specs and market prices simply.`,
-
-  [Persona.SECURITY]: `${BASE_SYSTEM_PROMPT}
-ROLE: Security Guard.
-STYLE: Professional and reassuring.
-FOCUS: Keeping the university mesh safe and explaining threats clearly.`,
-
-  [Persona.SUPPORT]: `${BASE_SYSTEM_PROMPT}
-ROLE: IT Support Agent.
-STYLE: Friendly and efficient.
-FOCUS: Step-by-step troubleshooting for university staff.`,
-
-  [Persona.NETWORK]: `${BASE_SYSTEM_PROMPT}
-ROLE: Network Specialist.
-STYLE: Technical but organized.
-FOCUS: Explaining connectivity and internet issues in plain language.`
+  [Persona.ARCHITECT]: `${BASE_SYSTEM_PROMPT}\nROLE: Lead System Architect. Focus on enterprise infrastructure and strategic IT solutions.`,
+  [Persona.HARDWARE]: `${BASE_SYSTEM_PROMPT}\nROLE: Hardware Oracle. Expert in device specifications, performance benchmarking, and procurement.`,
+  [Persona.SECURITY]: `${BASE_SYSTEM_PROMPT}\nROLE: Security Sentinel. Specialist in cyber-defense, audit compliance, and data integrity.`,
+  [Persona.SUPPORT]: `${BASE_SYSTEM_PROMPT}\nROLE: Ops Support. Focused on rapid troubleshooting and technical resolution for university staff.`,
+  [Persona.NETWORK]: `${BASE_SYSTEM_PROMPT}\nROLE: Nexus Analyst. Specialist in campus-wide connectivity, routing protocols, and backbone architecture.`
 };
 
 export const MOCK_DEVICES: Device[] = [
@@ -124,7 +112,7 @@ export const MOCK_DEVICES: Device[] = [
     macAddress: '00:1A:2B:3C:4D:5E',
     location: 'Main DC - Rack A1',
     lastConfig: '2024-05-15',
-    specs: 'University Core Backbone.',
+    specs: 'University Core Backbone. High-capacity fiber links.',
   },
   {
     id: 'iub-fw-edge',
@@ -136,87 +124,45 @@ export const MOCK_DEVICES: Device[] = [
     ip: '192.168.100.1',
     ipHistory: ['192.168.100.1'],
     macAddress: 'BC:EE:7B:8A:90:11',
-    location: 'Security Enclosure',
+    location: 'Security Enclosure - Main Entrance',
     lastConfig: '2024-05-28',
-    specs: 'Primary Security Gateway.',
+    specs: 'Enterprise-grade threat protection and VPN gateway.',
   },
   {
-    id: 'iub-srv-01',
-    name: 'IUB-Web-Server-01',
+    id: 'iub-srv-web',
+    name: 'IUB-Portal-Server',
     brand: 'Dell',
     model: 'PowerEdge R750',
     type: 'Server',
     status: 'Online',
-    ip: '10.0.0.50',
-    ipHistory: ['10.0.0.50', '10.0.0.49'],
-    macAddress: 'A0:B1:C2:D3:E4:F5',
-    location: 'Main DC - Rack B2',
-    lastConfig: '2024-06-01',
-    specs: 'Main University Portal.',
+    ip: '10.0.0.15',
+    ipHistory: ['10.0.0.15'],
+    macAddress: 'A1:B2:C3:D4:E5:F6',
+    location: 'Main DC - Rack B3',
+    lastConfig: '2024-06-02',
+    specs: '32-Core Xeon, 256GB RAM. Hosting IUB main portal.',
   },
   {
-    id: 'iub-ap-library',
-    name: 'AP-Library-01',
-    brand: 'Ubiquiti',
-    model: 'UniFi 6 Enterprise',
+    id: 'iub-ap-04',
+    name: 'AP-Library-04',
+    brand: 'Aruba',
+    model: 'AP-515',
     type: 'AP',
     status: 'Online',
-    ip: '172.16.10.12',
-    ipHistory: ['172.16.10.12', '172.16.10.5'],
-    macAddress: 'D8:B3:77:AA:BB:CC',
-    location: 'Main Library 1st Floor',
-    lastConfig: '2024-04-20',
-    specs: 'Public WiFi Access Point.',
-  },
-  {
-    id: 'iub-phone-vc',
-    name: 'VC-Phone-Office',
-    brand: 'Cisco',
-    model: 'IP Phone 8845',
-    type: 'IP Phone',
-    status: 'Online',
-    ip: '10.20.1.5',
-    ipHistory: ['10.20.1.5'],
-    macAddress: 'E4:F0:12:34:56:78',
-    location: 'VC Secretariat',
-    lastConfig: '2024-01-10',
-    specs: 'Executive Video Phone.',
-  },
-  {
-    id: 'iub-pc-lab-01',
-    name: 'Lab-PC-42',
-    brand: 'HP',
-    model: 'EliteDesk 800 G9',
-    type: 'PC',
-    status: 'Offline',
-    ip: '10.50.1.42',
-    ipHistory: ['10.50.1.42'],
-    macAddress: 'F0:DE:F1:C2:B3:A4',
-    location: 'CS Lab 1',
-    lastConfig: '2023-12-15',
-    specs: 'Student Workstation.',
-  },
-  {
-    id: 'iub-printer-admin',
-    name: 'Admin-LaserJet',
-    brand: 'HP',
-    model: 'LaserJet Enterprise M608',
-    type: 'Printer',
-    status: 'Online',
-    ip: '10.10.5.100',
-    ipHistory: ['10.10.5.100'],
+    ip: '10.0.5.104',
+    ipHistory: ['10.0.5.104'],
     macAddress: '11:22:33:44:55:66',
-    location: 'Admin Block Ground Floor',
-    lastConfig: '2024-03-05',
-    specs: 'Heavy Duty Network Printer.',
+    location: 'Central Library - 2nd Floor',
+    lastConfig: '2024-04-10',
+    specs: 'Wi-Fi 6 Access Point. High-density support.',
   }
 ];
 
 export const CONFIG_LIBRARY: ConfigTemplate[] = [
   {
-    id: 'bgp-global',
-    title: 'Standard BGP Config',
+    id: 'bgp-core',
+    title: 'Core BGP Peering',
     category: 'Routing',
-    commands: `router bgp 65001\n neighbor 202.x.x.x remote-as 17676\n description ISP_Connection`
+    commands: `router bgp 65001\n neighbor 202.x.x.x remote-as 17676\n description ISP_PRIMARY\n address-family ipv4\n  network 111.x.x.x mask 255.255.252.0`
   }
 ];
