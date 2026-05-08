@@ -9,7 +9,49 @@ export enum AppView {
   MEDIA_LAB = 'MEDIA_LAB',
   LIVE = 'LIVE',
   SYSTEM_EVENTS = 'SYSTEM_EVENTS',
-  SETTINGS = 'SETTINGS'
+  SETTINGS = 'SETTINGS',
+  STUDENT_PORTAL = 'STUDENT_PORTAL',
+  TICKETS = 'TICKETS',
+  FACULTY_WORKLOAD = 'FACULTY_WORKLOAD'
+}
+
+export enum UserRole {
+  GUEST = 'GUEST',
+  STUDENT = 'STUDENT',
+  FACULTY = 'FACULTY',
+  ADMIN = 'ADMIN'
+}
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  role: UserRole;
+  email: string;
+  department?: string;
+  rollNumber?: string;
+}
+
+export interface StudentData {
+  rollNumber: string;
+  name: string;
+  feeStatus: 'Paid' | 'Pending' | 'Overdue';
+  attendance: string;
+  timetable: Array<{ day: string; subject: string; time: string; room: string }>;
+}
+
+export interface SupportTicket {
+  id: string;
+  subject: string;
+  status: 'Open' | 'In Progress' | 'Resolved';
+  priority: 'Low' | 'Medium' | 'High';
+  createdAt: Date;
+}
+
+export interface ServerStatus {
+  name: string;
+  status: 'Online' | 'Degraded' | 'Offline';
+  uptime: string;
+  load: string;
 }
 
 export enum Persona {
